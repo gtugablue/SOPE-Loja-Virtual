@@ -1,9 +1,9 @@
 #include "utils.h"
 
-int parse_int(int* dest, char* str, int base)
+int parse_int(long* dest, char* str, int base)
 {
 	char* test;
-	int value;
+	long value;
 	value = strtol(str, &test, base);
 
 	if((*test != '\0') || errno == ERANGE)
