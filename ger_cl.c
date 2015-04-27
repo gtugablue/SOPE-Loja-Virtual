@@ -4,7 +4,7 @@ int main(int argc, char **argv)
 {
 	if(argc != 3)
 	{
-		printf("\n\t%s: Invalid number of arguments.\n\tMust be: %s <shared_memory_name> <number_of_clients>\n\n", argv[0], argv[0]);
+		printf("\n\t%s: Inwvalid number of arguments.\n\tMust be: %s <shared_memory_name> <number_of_clients>\n\n", argv[0], argv[0]);
 		return 1;
 	}
 
@@ -23,20 +23,6 @@ int main(int argc, char **argv)
 		printf("\n\t%s - ERROR: Invalid number of clients.\n\tThat value is not a number\n\n", argv[0]);
 		return 1;
 	}
-
-	return 0;
-}
-
-int parse_int(int* dest, char* str, int base)
-{
-	char* test;
-	int value;
-	value = strtol(str, &test, base);
-
-	if((*test != '\0') || errno == ERANGE)
-		return 1;
-
-	*dest = value;
 
 	return 0;
 }
