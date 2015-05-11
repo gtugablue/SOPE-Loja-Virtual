@@ -2,6 +2,9 @@
 
 int main(int argc, char *argv[])
 {
+	// TODO Acho que temos de mudar isto... Para abrir a memória partilhada acho que temos de usar sgm_open para lhe dar um nome, esse key que usas
+	// para o shmget é o valor retornado pelo shm_open, é tipo um file descriptor
+
 	int shm_id;
 	if (create_shared_memory(&shm_id)) return 1;
 
