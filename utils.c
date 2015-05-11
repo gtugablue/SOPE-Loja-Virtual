@@ -1,6 +1,18 @@
 #include "utils.h"
+#include <limits.h>
 
-int parse_int(long* dest, char* str, int base)
+int parse_int(int* dest, char* str, int base)
+{
+	long result;
+	if (parse_long(&result, str, base)) return 1;
+
+	if (result > INT_MAX) return 1;
+
+	*dest = result;
+	return 0;
+}
+
+int parse_long(long* dest, char* str, int base)
 {
 	char* test;
 	long value;
