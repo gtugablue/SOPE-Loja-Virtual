@@ -2,13 +2,10 @@
 
 int main(int argc, char *argv[])
 {
-	// TODO Acho que temos de mudar isto... Para abrir a memória partilhada acho que temos de usar sgm_open para lhe dar um nome, esse key que usas
-	// para o shmget é o valor retornado pelo shm_open, é tipo um file descriptor
-
 	int shm_id;
-	if (create_shared_memory(&shm_id)) return 1;
+	if (create_shared_memory(argv[1], &shm_id, SHARED_MEM_SIZE)) return 1;
 
-	if (shmctl(shm_id, IPC_RMID, NULL) == -1)
+	if (shm_unlink(argv[1]) == -1)
 	{
 		printf("Error: shared memory wasn't properly cleaned.\n");
 		return 1;
@@ -18,24 +15,16 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
-int create_shared_memory(int *shm_id)
+int create_shared_memory(const char *name, int *shm_id, long size)
 {
-	char pathname[PATH_MAX];
-	if (getcwd(pathname, PATH_MAX) == NULL)
-	{
-		printf("Error: couldn't obtain current path.\n");
-		return 1;
-	}
-	key_t shared_mem_key = ftok(pathname, 0);
-	if (shared_mem_key == -1)
-	{
-		printf("Error: couldn't obtain a key for the shared memory\n.");
-		return 1;
-	}
-	if ((*shm_id = shmget(shared_mem_key, SHARED_MEM_SIZE, IPC_CREAT | IPC_EXCL)) == -1)
+	if ((*shm_id = shm_open(name, O_CREAT | O_EXCL | O_RDWR, 0600)) == -1)
 	{
 		printf("Error: couldn't create shared memory.\n");
 		return 1;
+	}
+	if (ftruncate(*shm_id, size) == -1)
+	{
+		printf("Error: couldn't allocate space in the shared memory.\n");
 	}
 	return 0;
 }
