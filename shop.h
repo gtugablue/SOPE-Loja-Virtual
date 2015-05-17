@@ -5,7 +5,10 @@
 
 typedef struct
 {
-	// TODO primitivas
+	// Synchronizing variables
+	pthread_mutex_t loja_mutex;
+
+	// Data variables
 	time_t opening_time;
 	int num_balcoes;
 	balcao_t *balcoes;
