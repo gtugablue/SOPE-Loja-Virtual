@@ -37,6 +37,7 @@ typedef struct Balcao_t
 #include "ger_cl.h"
 
 #define SHARED_MEM_SIZE	(1024 * 1024)
+#define ATTEND_END_MESSAGE "fim_atendimento"
 
 typedef struct {
 	int *curr_count;
@@ -44,11 +45,17 @@ typedef struct {
 	shop_t *shop;
 } counter_thr_info;
 
+typedef struct {
+	int duration;
+	char *cl_fifo;
+} attend_thr_info;
+
 int main(int argc, char *argv[]);
 shop_t *create_shared_memory(const char *name, int *shm_id, long size);
 balcao_t join_shmemory(shop_t* shop);
 int terminate_balcao(char* shmem, shop_t *shop);
 void *timer_countdown(void *arg);
+void *attend_client(void *arg);
 int initialize_log(const char *sh_name);
 
 #endif
