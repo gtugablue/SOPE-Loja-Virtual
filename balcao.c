@@ -23,17 +23,6 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (initialize_log(argv[1]))
-	{
-		printf("Error initializing log.\n");
-		return 1;
-	}
-	if (write_log_entry(argv[1], BALCAO, 0, "asdadas", "channeeeeel"))
-	{
-		printf("Error writting log entry.\n");
-		return 1;
-	}
-
 	///////////////////////////////////////////////////////
 	/////////////// Shop and balcao init //////////////////
 	///////////////////////////////////////////////////////
@@ -98,6 +87,7 @@ shop_t *create_shared_memory(const char *name, int *shm_id, long size)
 {
 	if((*shm_id = shm_open(name, O_RDWR, 0600)) < 0)
 	{
+		printf("Creating shared memory.\n");
 		if((*shm_id = shm_open(name, O_CREAT | O_EXCL | O_RDWR, 0600)) < 0)
 		{
 			printf("Error: couldn't create/open shared memory.\n");
@@ -118,15 +108,21 @@ shop_t *create_shared_memory(const char *name, int *shm_id, long size)
 		shop.num_balcoes = 0;
 
 		shop_t *shmem;
-		shmem = (shop_t *) mmap(0,size,PROT_READ|PROT_WRITE,MAP_SHARED,*shm_id,0);
+		shmem = (shop_t *) mmap(0,size, PROT_READ|PROT_WRITE, MAP_SHARED, *shm_id, 0);
 		*shmem = shop;
-		return shmem;
-	}
 
-	if (ftruncate(*shm_id, size) == -1)
-	{
-		printf("Error: couldn't allocate space in the shared memory.\n");
-		return NULL;
+		if (initialize_log(name))
+		{
+			printf("Error initializing log.\n");
+			return NULL;
+		}
+		if (write_log_entry(name, BALCAO, 1, "inicia_mempart", "-"))
+		{
+			printf("Error writting to log.\n");
+			return NULL;
+		}
+
+		return shmem;
 	}
 
 	shop_t *shmem;
@@ -162,12 +158,13 @@ balcao_t join_shmemory(shop_t* shop)
 	}
 
 	int num_balcoes = shop->num_balcoes;
-	thisBalcao.num = num_balcoes + 1;
-	ownIndex = num_balcoes;
 	shop->balcoes[num_balcoes] = thisBalcao;
 	shop->num_balcoes++;
 
 	pthread_mutex_unlock(&shop->loja_mutex);
+
+	thisBalcao.num = num_balcoes + 1;
+	ownIndex = num_balcoes;
 
 	return thisBalcao;
 }
@@ -175,8 +172,8 @@ balcao_t join_shmemory(shop_t* shop)
 int terminate_balcao(char* shmem, shop_t *shop)
 {
 	int last = 0;
-	int i = 0;
-	for(; i < shop->num_balcoes; i++)
+	size_t i;
+	for(i = 0; i < shop->num_balcoes; i++)
 	{
 		if((int)shop->balcoes[i].duracao == -1)
 		{
@@ -184,9 +181,10 @@ int terminate_balcao(char* shmem, shop_t *shop)
 			break;
 		}
 	}
-
+	printf("asda\n");
 	if(last == 0)	// this is the last balcao active
 	{
+		printf("asdsaasdasda\n");
 		pthread_mutex_lock(&shop->loja_mutex);
 		pthread_mutex_unlock(&shop->loja_mutex);	// to ensure no process is using it
 		pthread_mutex_destroy(&shop->loja_mutex);
