@@ -1,6 +1,7 @@
 #include "balcao.h"
 
 int ownIndex;
+int opening_duration;
 
 int main(int argc, char *argv[])
 {
@@ -10,7 +11,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	int opening_duration = 0;
+	opening_duration = 0;
 	if(parse_int(&opening_duration, argv[2], 10) != 0)
 	{
 		printf("\n\t%s - ERROR: Invalid opening time. Must be a number\n\n", argv[0]);
@@ -19,16 +20,26 @@ int main(int argc, char *argv[])
 
 	int shm_id;
 	shop_t *shop;
-	shop = (shop_t *)create_shared_memory(argv[1], &shm_id, SHARED_MEM_SIZE);
-	if (shop == NULL) return 1;
+	//shop = (shop_t *)create_shared_memory(argv[1], &shm_id, SHARED_MEM_SIZE);
+	//if (shop == NULL) return 1;
 
-	balcao_t balcao = join_shmemory(shop);
+	//balcao_t balcao = join_shmemory(shop);
 
-	if(balcao.num == -1) return 1;
+	//if(balcao.num == -1) return 1;
 
-	// TODO Atender clientes
+	printf("timer : %d\n", opening_duration);
 
-	return terminate_balcao(argv[1], shop);
+	pthread_t counterThread;
+	pthread_create(&counterThread, NULL, timer_countdown, "");
+	//pthread_join(counterThread, NULL);
+
+	while(opening_duration > 0) // TODO Atender clientes
+	{
+		printf("working - %d\n", opening_duration);
+	}
+
+	return 0;
+	//return terminate_balcao(argv[1], shop);
 }
 
 shop_t *create_shared_memory(const char *name, int *shm_id, long size)
@@ -150,3 +161,13 @@ int terminate_balcao(char* shmem, shop_t *shop)
 	return 0;
 }
 
+void *timer_countdown(void *arg)
+{
+	while(opening_duration > 0)
+	{
+		sleep(1);
+		opening_duration--;
+	}
+
+	return NULL;
+}

@@ -23,6 +23,9 @@ typedef struct Balcao_t
 
 #include <sys/shm.h>
 #include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/file.h>
 #include <linux/limits.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -38,5 +41,6 @@ int main(int argc, char *argv[]);
 shop_t *create_shared_memory(const char *name, int *shm_id, long size);
 balcao_t join_shmemory(shop_t* shop);
 int terminate_balcao(char* shmem, shop_t *shop);
+void *timer_countdown(void *arg);
 
 #endif
