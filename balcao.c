@@ -1,7 +1,6 @@
 #include "balcao.h"
 
 int ownIndex;
-int opening_duration;
 
 int main(int argc, char *argv[])
 {
@@ -11,10 +10,11 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	opening_duration = 0;
-	if(parse_int(&opening_duration, argv[2], 10) != 0)
+	int opening_duration = 0;
+
+	if(parse_int(&opening_duration, argv[2], 10) != 0 || opening_duration <= 0)
 	{
-		printf("\n\t%s - ERROR: Invalid opening time. Must be a number\n\n", argv[0]);
+		printf("\n\t%s - ERROR: Invalid opening time. Must be a number greater than zero\n\n", argv[0]);
 		return 1;
 	}
 
@@ -30,14 +30,29 @@ int main(int argc, char *argv[])
 	printf("timer : %d\n", opening_duration);
 
 	pthread_t counterThread;
-	pthread_create(&counterThread, NULL, timer_countdown, "");
-	//pthread_join(counterThread, NULL);
+	int curr_count = opening_duration;
 
-	while(opening_duration > 0) // TODO Atender clientes
+	char* fifo_name = shop->balcoes[ownIndex].fifo_name;
+
+	int fifo_fd = open(fifo_name, O_RDONLY | O_NONBLOCK);
+	char *message = malloc(MAX_NAME_SIZE+1);
+	char *thr_arg;
+	int str_size = 0;
+
+	pthread_create(&counterThread, NULL, timer_countdown, &curr_count);
+	while(curr_count > 0) // TODO Atender clientes
 	{
-		printf("working - %d\n", opening_duration);
+		str_size = read(fifo_fd, message, MAX_NAME_SIZE);
+		if(str_size <= 0)
+			continue;
+
+		thr_arg = malloc(MAX_NAME_SIZE+1);
+		message[str_size] = '\0';
+		strcpy(thr_arg, message);
+		// TODO Começar thread
 	}
 
+	close(fifo_fd);
 	return 0;
 	//return terminate_balcao(argv[1], shop);
 }
@@ -64,7 +79,6 @@ shop_t *create_shared_memory(const char *name, int *shm_id, long size)
 		pthread_mutex_t mt = PTHREAD_MUTEX_INITIALIZER;	// had to do this to solve compilation error
 		shop.loja_mutex = mt;
 		shop.num_balcoes = 0;
-		//TODO tabela balcões
 
 		shop_t *shmem;
 		shmem = (shop_t *) mmap(0,size,PROT_READ|PROT_WRITE,MAP_SHARED,*shm_id,0);
@@ -163,10 +177,18 @@ int terminate_balcao(char* shmem, shop_t *shop)
 
 void *timer_countdown(void *arg)
 {
-	while(opening_duration > 0)
+	int *count = (int*)arg;
+	time_t start_time = time(NULL);
+	time_t curr_time;
+	while(1)
 	{
-		sleep(1);
-		opening_duration--;
+		curr_time = time(NULL);
+		if(curr_time-start_time >= *count)
+		{
+			*count = 0;
+			return NULL;
+		}
+		sleep(0.1);
 	}
 
 	return NULL;

@@ -34,6 +34,7 @@ typedef struct Balcao_t
 #include <time.h>
 #include "utils.h"
 #include "shop.h"
+#include "ger_cl.h"
 
 #define SHARED_MEM_SIZE	(1024 * 1024)
 
