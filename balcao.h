@@ -63,7 +63,7 @@ typedef struct {
 
 int main(int argc, char *argv[]);
 shop_t *create_shared_memory(const char *name, int *shm_id, long size);
-balcao_t join_shmemory(shop_t* shop);
+balcao_t join_shmemory(const char *shname, shop_t* shop);
 int terminate_balcao(char* shmem, shop_t *shop);
 void *timer_countdown(void *arg);
 void *attend_client(void *arg);

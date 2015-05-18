@@ -1,6 +1,8 @@
 #include "balcao.h"
 #include "log.h"
 
+#define FIFO_DIR "/tmp/"
+
 int ownIndex;
 
 int main(int argc, char *argv[])
@@ -32,7 +34,7 @@ int main(int argc, char *argv[])
 	shop = (shop_t *)create_shared_memory(argv[1], &shm_id, SHARED_MEM_SIZE);
 	if (shop == NULL) return 1;
 
-	balcao_t balcao = join_shmemory(shop);
+	balcao_t balcao = join_shmemory(argv[1], shop);
 
 	if(balcao.num == -1) return 1;
 
@@ -44,9 +46,11 @@ int main(int argc, char *argv[])
 	int str_size = 0;
 
 	char *fifo_name = shop->balcoes[ownIndex].fifo_name;
-
-	int fifo_fd = open(fifo_name, O_RDONLY | O_NONBLOCK);
-	int fifo_write = open(fifo_name, O_WRONLY);
+	char path[strlen(FIFO_DIR) + strlen(fifo_name) + 1];
+	strcpy(path, FIFO_DIR);
+	strcat(path, fifo_name);
+	int fifo_fd = open(path, O_RDONLY | O_NONBLOCK);
+	int fifo_write = open(path, O_WRONLY);
 	if((fifo_fd <= 0) | (fifo_write <= 0))
 	{
 		printf("Error: could not open fifo.\n");
@@ -130,7 +134,7 @@ shop_t *create_shared_memory(const char *name, int *shm_id, long size)
 	return shmem;
 }
 
-balcao_t join_shmemory(shop_t* shop)
+balcao_t join_shmemory(const char *shname, shop_t* shop)
 {
 	balcao_t thisBalcao; thisBalcao.num = -1;
 
@@ -139,9 +143,12 @@ balcao_t join_shmemory(shop_t* shop)
 
 	thisBalcao.abertura = curr_time;
 	thisBalcao.duracao = (time_t)-1;
-	sprintf(thisBalcao.fifo_name, "/tmp/fb_%d", pid);
+	sprintf(thisBalcao.fifo_name, "fb_%d", pid);
+	char path[strlen(thisBalcao.fifo_name) + 1 + strlen(FIFO_DIR)];
+	strcpy(path, FIFO_DIR);
+	strcat(path, thisBalcao.fifo_name);
 
-	if(mkfifo(thisBalcao.fifo_name, BALCAO_FIFO_MODE) != 0)
+	if(mkfifo(path, BALCAO_FIFO_MODE) != 0)
 	{
 		printf("Error: unable to create FIFO %s\n", thisBalcao.fifo_name);
 		return thisBalcao;
@@ -166,6 +173,12 @@ balcao_t join_shmemory(shop_t* shop)
 	thisBalcao.num = num_balcoes + 1;
 	ownIndex = num_balcoes;
 
+	if (write_log_entry(shname, BALCAO, thisBalcao.num, "cria_linh_mempart", thisBalcao.fifo_name))
+	{
+		printf("Error writting to log.\n");
+		return thisBalcao;
+	}
+
 	return thisBalcao;
 }
 
@@ -181,15 +194,18 @@ int terminate_balcao(char* shmem, shop_t *shop)
 			break;
 		}
 	}
-	printf("asda\n");
+
 	if(last == 0)	// this is the last balcao active
 	{
-		printf("asdsaasdasda\n");
 		pthread_mutex_lock(&shop->loja_mutex);
 		pthread_mutex_unlock(&shop->loja_mutex);	// to ensure no process is using it
 		pthread_mutex_destroy(&shop->loja_mutex);
 
-		if(unlink(shop->balcoes[ownIndex].fifo_name) != 0)
+		char path[strlen(FIFO_DIR) + strlen(shop->balcoes[ownIndex].fifo_name) + 1];
+		strcpy(path, FIFO_DIR);
+		strcat(path, shop->balcoes[ownIndex].fifo_name);
+
+		if(unlink(path) != 0)
 		{
 			printf("Error: unable to unlink fifo %s\n", shop->balcoes[ownIndex].fifo_name);
 			return 1;
@@ -203,8 +219,6 @@ int terminate_balcao(char* shmem, shop_t *shop)
 
 		printf("\nShared memory cleaned\n\n");
 	}
-
-
 
 	return 0;
 }
