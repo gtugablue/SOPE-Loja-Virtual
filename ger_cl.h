@@ -10,10 +10,8 @@
 #include <string.h>
 #include <unistd.h>
 #include "utils.h"
+#include "balcao.h"
 
-#define SHM_SIZE 1024*1024	// defines the shared memory as a 1MB region
-
-#define MAX_NAME_SIZE 20
 #define CL_FIFO_NAME "/tmp/fc_"
 #define CL_FIFO_MODE 0777
 

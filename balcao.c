@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 	pthread_t counterThread, attendThread;
 	int curr_count = opening_duration;
 
-	char message[MAX_NAME_SIZE+1];
+	char message[MAX_FIFO_NAME_LEN+1];
 	char *thr_arg;
 	int str_size = 0;
 
@@ -71,9 +71,9 @@ int main(int argc, char *argv[])
 	pthread_create(&counterThread, NULL, timer_countdown, &info);
 	while(curr_count > 0)
 	{
-		str_size = read(fifo_fd, message, MAX_NAME_SIZE);
+		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN);
 
-		thr_arg = malloc(MAX_NAME_SIZE+1);
+		thr_arg = malloc(MAX_FIFO_NAME_LEN+1);
 		message[str_size] = '\0';
 		strcpy(thr_arg, message);
 		attend_thr_info cl_info;

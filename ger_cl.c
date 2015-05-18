@@ -18,7 +18,7 @@ int main(int argc, char **argv)
 	int shm_id;
 	long num_clients;
 
-	if((parse_long(&mem_key, argv[1], 10) != 0) || (shm_id = shmget(mem_key, SHM_SIZE, 0)) == -1)
+	if((parse_long(&mem_key, argv[1], 10) != 0) || (shm_id = shmget(mem_key, SHARED_MEM_SIZE, 0)) == -1)
 	{
 		printf("\n\t%s - ERROR: Invalid shared memory key. That\n\tregion is not open or the value is not a number\n\n", argv[0]);
 		//return 1;
@@ -80,10 +80,10 @@ int parent_action()
 int child_action()
 {
 	int pid = getpid();
-	char* pid_str = malloc(MAX_NAME_SIZE);
+	char* pid_str = malloc(MAX_FIFO_NAME_LEN);
 	sprintf(pid_str, "%d", pid);
 
-	char* fifo_pathname = malloc(MAX_NAME_SIZE);
+	char* fifo_pathname = malloc(MAX_FIFO_NAME_LEN);
 	strcpy(fifo_pathname, CL_FIFO_NAME);
 	strcpy(fifo_pathname + strlen(CL_FIFO_NAME), pid_str);		// fifo_pathname now has the complete path for the fifo
 

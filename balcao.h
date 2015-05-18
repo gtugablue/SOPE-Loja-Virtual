@@ -2,9 +2,27 @@
 #define BALCAO_H
 
 #include <pthread.h>
+#include <sys/shm.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/file.h>
+#include <linux/limits.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <time.h>
+#include <string.h>
+#include "utils.h"
 
-#define MAX_FIFO_NAME_LEN 14
+#define SHARED_MEM_SIZE	(1024 * 1024)
+#define ATTEND_END_MESSAGE "fim_atendimento"
+
+#define MAX_FIFO_NAME_LEN 20
 #define BALCAO_FIFO_MODE 0600
+
+#define MAX_NUM_BALCOES 30
 
 typedef struct Balcao_t
 {
@@ -21,23 +39,16 @@ typedef struct Balcao_t
 	long atendimento_medio;
 } balcao_t;
 
-#include <sys/shm.h>
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/file.h>
-#include <linux/limits.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <time.h>
-#include "utils.h"
-#include "shop.h"
-#include "ger_cl.h"
+typedef struct
+{
+	// Synchronizing variables
+	pthread_mutex_t loja_mutex;
 
-#define SHARED_MEM_SIZE	(1024 * 1024)
-#define ATTEND_END_MESSAGE "fim_atendimento"
+	// Data variables
+	time_t opening_time;
+	int num_balcoes;
+	balcao_t balcoes[MAX_NUM_BALCOES];
+} shop_t;
 
 typedef struct {
 	int *curr_count;
