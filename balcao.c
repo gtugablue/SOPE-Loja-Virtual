@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 	}
 
 	int shm_id;
-	shop_t *shop;
+	shop_t *shop = NULL;
 	//shop = (shop_t *)create_shared_memory(argv[1], &shm_id, SHARED_MEM_SIZE);
 	//if (shop == NULL) return 1;
 
@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 
 	printf("timer : %d\n", opening_duration);
 
-	pthread_t counterThread;
+	pthread_t counterThread, attendThread;
 	int curr_count = opening_duration;
 
 	char* fifo_name = shop->balcoes[ownIndex].fifo_name;
@@ -55,12 +55,17 @@ int main(int argc, char *argv[])
 	while(curr_count > 0)
 	{
 		str_size = read(fifo_fd, message, MAX_NAME_SIZE);
-		// 0 nao aberto
 
 		thr_arg = malloc(MAX_NAME_SIZE+1);
 		message[str_size] = '\0';
 		strcpy(thr_arg, message);
-		// TODO Começar thread
+		attend_thr_info cl_info;
+		cl_info.cl_fifo = thr_arg;
+		int duration = shop->balcoes[ownIndex].clientes_em_atendimento + 1;
+		if(duration > 10) duration = 10;
+		cl_info.duration = duration;
+
+		pthread_create(&attendThread, NULL, attend_client, &cl_info);
 	}
 
 	return 0;
@@ -150,8 +155,6 @@ int terminate_balcao(char* shmem, shop_t *shop)
 {
 	time_t end = time(NULL);
 
-	//shop->balcoes[ownIndex].duracao = end - shop->balcoes[ownIndex].abertura;
-
 	int last = 0;
 	int i = 0;
 	for(; i < shop->num_balcoes; i++)
@@ -206,5 +209,25 @@ void *timer_countdown(void *arg)
 
 	info->shop->balcoes[ownIndex].duracao = time(NULL) - info->shop->balcoes[ownIndex].abertura;
 	close(*info->fifo_write_fd);
+	return NULL;
+}
+
+void *attend_client(void *arg)
+{
+	char *cl_fifo = ((attend_thr_info*)arg)->cl_fifo;
+	int duration = ((attend_thr_info*)arg)->duration;
+
+	sleep(duration);
+
+	int cl_fifo_fd = open(cl_fifo, O_WRONLY);
+
+	if(cl_fifo_fd > 0)
+	{
+		char *message = ATTEND_END_MESSAGE;
+		write(cl_fifo_fd, message, strlen(message));
+		close(cl_fifo_fd);
+	}
+
+	//free((attend_thr_info*)arg);
 	return NULL;
 }
