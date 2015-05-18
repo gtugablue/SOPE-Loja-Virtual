@@ -38,6 +38,12 @@ typedef struct Balcao_t
 
 #define SHARED_MEM_SIZE	(1024 * 1024)
 
+typedef struct {
+	int *curr_count;
+	int *fifo_write_fd;
+	shop_t *shop;
+} counter_thr_info;
+
 int main(int argc, char *argv[]);
 shop_t *create_shared_memory(const char *name, int *shm_id, long size);
 balcao_t join_shmemory(shop_t* shop);
