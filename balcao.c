@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 	/////////////// Shop and balcao init //////////////////
 	///////////////////////////////////////////////////////
 
-	int shm_id;
+	int shm_id = -1;
 	shop_t *shop = NULL;
 	shop = (shop_t *)create_shared_memory(argv[1], &shm_id, SHARED_MEM_SIZE);
 	if (shop == NULL) return 1;
@@ -91,8 +91,7 @@ shop_t *create_shared_memory(const char *name, int *shm_id, long size)
 {
 	if((*shm_id = shm_open(name, O_RDWR, 0600)) < 0)
 	{
-		printf("Creating shared memory.\n");
-		if((*shm_id = shm_open(name, O_CREAT | O_EXCL | O_RDWR, 0600)) < 0)
+		if((*shm_id = shm_open(name, O_CREAT | O_EXCL | O_RDWR, SHARED_MEM_MODE)) < 0)
 		{
 			printf("Error: couldn't create/open shared memory.\n");
 			return NULL;
