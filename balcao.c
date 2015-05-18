@@ -34,7 +34,6 @@ int main(int argc, char *argv[])
 
 	char* fifo_name = shop->balcoes[ownIndex].fifo_name;
 
-	int fifo_fd = open(fifo_name, O_RDONLY | O_NONBLOCK);
 	char *message = malloc(MAX_NAME_SIZE+1);
 	char *thr_arg;
 	int str_size = 0;
@@ -42,9 +41,9 @@ int main(int argc, char *argv[])
 	pthread_create(&counterThread, NULL, timer_countdown, &curr_count);
 	while(curr_count > 0) // TODO Atender clientes
 	{
+		int fifo_fd = open(fifo_name, O_RDONLY);
 		str_size = read(fifo_fd, message, MAX_NAME_SIZE);
-		if(str_size <= 0)
-			continue;
+		close(fifo_fd);
 
 		thr_arg = malloc(MAX_NAME_SIZE+1);
 		message[str_size] = '\0';
@@ -52,7 +51,6 @@ int main(int argc, char *argv[])
 		// TODO Começar thread
 	}
 
-	close(fifo_fd);
 	return 0;
 	//return terminate_balcao(argv[1], shop);
 }
