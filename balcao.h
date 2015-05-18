@@ -16,7 +16,6 @@
 #include <string.h>
 #include "utils.h"
 
-#define SHARED_MEM_SIZE	(1024 * 1024)
 #define ATTEND_END_MESSAGE "fim_atendimento"
 
 #define MAX_FIFO_NAME_LEN 20
@@ -49,6 +48,8 @@ typedef struct
 	int num_balcoes;
 	balcao_t balcoes[MAX_NUM_BALCOES];
 } shop_t;
+
+#define SHARED_MEM_SIZE	sizeof(shop_t)
 
 typedef struct {
 	int *curr_count;
