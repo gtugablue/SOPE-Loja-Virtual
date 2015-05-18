@@ -3,6 +3,9 @@
 
 #include <pthread.h>
 
+#define MAX_FIFO_NAME_LEN 14
+#define BALCAO_FIFO_MODE 0600
+
 typedef struct Balcao_t
 {
 	// Synchronizing variables
@@ -12,7 +15,7 @@ typedef struct Balcao_t
 	int num;
 	time_t abertura;
 	time_t duracao;
-	char* fifo_name;
+	char fifo_name[MAX_FIFO_NAME_LEN];
 	int clientes_em_atendimento;
 	int clientes_atendidos;
 	long atendimento_medio;

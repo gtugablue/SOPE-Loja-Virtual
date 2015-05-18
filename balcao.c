@@ -74,25 +74,32 @@ balcao_t join_shmemory(shop_t* shop)
 {
 	balcao_t thisBalcao; thisBalcao.num = -1;
 
+	time_t curr_time = time(NULL);
+	int pid = getpid();
+
+	thisBalcao.abertura = curr_time;
+	thisBalcao.duracao = (time_t)-1;
+	sprintf(thisBalcao.fifo_name, "/tmp/fb_%d", pid);
+
+	if(mkfifo(thisBalcao.fifo_name, BALCAO_FIFO_MODE) != 0)
+	{
+		printf("Error: unable to create FIFO %s\n", thisBalcao.fifo_name);
+		return thisBalcao;
+	}
+
+	thisBalcao.clientes_em_atendimento = 0;
+	thisBalcao.clientes_atendidos = 0;
+	thisBalcao.atendimento_medio = 0;
+	thisBalcao.num = shop->num_balcoes + 1;
+
 	if(pthread_mutex_lock(&shop->loja_mutex) != 0)
 	{
 		printf("Error: unable to lock \"loja\" mutex.\n");
 		return thisBalcao;
 	}
 
-	time_t curr_time = time(NULL);
-	int pid = getpid();
-
-	thisBalcao.num = shop->num_balcoes + 1;
-	thisBalcao.abertura = curr_time;
-	thisBalcao.duracao = (time_t)-1;
-	// TODO criar nome do fifo - fb[pid]
-	thisBalcao.clientes_em_atendimento = 0;
-	thisBalcao.clientes_atendidos = 0;
-	thisBalcao.atendimento_medio = 0;
-
 	shop->num_balcoes++;
-	//TODO adicionar objeto do balcao à loja
+	shop->balcoes[shop->num_balcoes-1] = thisBalcao;
 
 	pthread_mutex_unlock(&shop->loja_mutex);
 
@@ -101,7 +108,9 @@ balcao_t join_shmemory(shop_t* shop)
 
 int terminate_balcao(char* shmem, shop_t *shop)
 {
-	pthred_mutex_lock(&shop->loja_mutex);
+	/*pthread_mutex_lock(&shop->loja_mutex);
+	pthread_mutex_unlock(&shop->loja_mutex);	// to ensure no process is using it
+	pthread_mutex_destroy(&shop->loja_mutex);
 
 	// TODO terminate balcao FIFO
 
@@ -109,7 +118,7 @@ int terminate_balcao(char* shmem, shop_t *shop)
 	{
 		printf("Error: shared memory wasn't properly cleaned.\n");
 		return 1;
-	}
+	}*/
 
 	return 0;
 }
