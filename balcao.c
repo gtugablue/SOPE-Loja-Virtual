@@ -28,6 +28,11 @@ int main(int argc, char *argv[])
 		printf("Error initializing log.\n");
 		return 1;
 	}
+	if (write_log_entry(argv[1], BALCAO, 0, "asdadas", "channeeeeel"))
+	{
+		printf("Error writting log entry.\n");
+		return 1;
+	}
 
 	///////////////////////////////////////////////////////
 	/////////////// Shop and balcao init //////////////////
