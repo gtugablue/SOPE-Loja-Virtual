@@ -4,6 +4,10 @@ int ownIndex;
 
 int main(int argc, char *argv[])
 {
+	///////////////////////////////////////////////////////
+	/////////////// Argument verification /////////////////
+	///////////////////////////////////////////////////////
+
 	if(argc != 3)
 	{
 		printf("\n\t%s: Invalid number of arguments.\n\tMust be: %s <shared_memory_name> <opening_time>\n\n", argv[0], argv[0]);
@@ -18,33 +22,39 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	///////////////////////////////////////////////////////
+	/////////////// Shop and balcao init //////////////////
+	///////////////////////////////////////////////////////
+
 	int shm_id;
 	shop_t *shop = NULL;
-	//shop = (shop_t *)create_shared_memory(argv[1], &shm_id, SHARED_MEM_SIZE);
-	//if (shop == NULL) return 1;
+	shop = (shop_t *)create_shared_memory(argv[1], &shm_id, SHARED_MEM_SIZE);
+	if (shop == NULL) return 1;
 
-	//balcao_t balcao = join_shmemory(shop);
+	balcao_t balcao = join_shmemory(shop);
 
-	//if(balcao.num == -1) return 1;
-
-	printf("timer : %d\n", opening_duration);
+	if(balcao.num == -1) return 1;
 
 	pthread_t counterThread, attendThread;
 	int curr_count = opening_duration;
-
-	char* fifo_name = shop->balcoes[ownIndex].fifo_name;
 
 	char message[MAX_NAME_SIZE+1];
 	char *thr_arg;
 	int str_size = 0;
 
-	int fifo_write = open(fifo_name, O_WRONLY | O_NONBLOCK);
-	int fifo_fd = open(fifo_name, O_RDONLY);
+	char *fifo_name = shop->balcoes[ownIndex].fifo_name;
+
+	int fifo_fd = open(fifo_name, O_RDONLY | O_NONBLOCK);
+	int fifo_write = open(fifo_name, O_WRONLY);
 	if((fifo_fd <= 0) | (fifo_write <= 0))
 	{
 		printf("Error: could not open fifo.\n");
 		return 1;
 	}
+
+	///////////////////////////////////////////////////////
+	///////////////// Thread deployment ///////////////////
+	///////////////////////////////////////////////////////
 
 	counter_thr_info info;
 	info.curr_count = &curr_count;
@@ -68,8 +78,8 @@ int main(int argc, char *argv[])
 		pthread_create(&attendThread, NULL, attend_client, &cl_info);
 	}
 
-	return 0;
-	//return terminate_balcao(argv[1], shop);
+	//return 0;
+	return terminate_balcao(argv[1], shop);
 }
 
 shop_t *create_shared_memory(const char *name, int *shm_id, long size)
@@ -140,26 +150,23 @@ balcao_t join_shmemory(shop_t* shop)
 	}
 
 	int num_balcoes = shop->num_balcoes;
+	thisBalcao.num = num_balcoes + 1;
+	ownIndex = num_balcoes;
 	shop->balcoes[num_balcoes] = thisBalcao;
 	shop->num_balcoes++;
 
 	pthread_mutex_unlock(&shop->loja_mutex);
-
-	thisBalcao.num = num_balcoes + 1;
-	ownIndex = num_balcoes;
 
 	return thisBalcao;
 }
 
 int terminate_balcao(char* shmem, shop_t *shop)
 {
-	time_t end = time(NULL);
-
 	int last = 0;
 	int i = 0;
 	for(; i < shop->num_balcoes; i++)
 	{
-		if(shop->balcoes[i].duracao != -1)
+		if((int)shop->balcoes[i].duracao == -1)
 		{
 			last = 1;
 			break;
@@ -183,6 +190,8 @@ int terminate_balcao(char* shmem, shop_t *shop)
 			printf("Error: shared memory wasn't properly cleaned.\n");
 			return 1;
 		}
+
+		printf("\nShared memory cleaned\n\n");
 	}
 
 
