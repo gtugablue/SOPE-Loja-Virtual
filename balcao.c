@@ -34,17 +34,28 @@ int main(int argc, char *argv[])
 
 	char* fifo_name = shop->balcoes[ownIndex].fifo_name;
 
-	int fifo_fd = open(fifo_name, O_RDONLY | O_NONBLOCK);
-	char *message = malloc(MAX_NAME_SIZE+1);
+	char message[MAX_NAME_SIZE+1];
 	char *thr_arg;
 	int str_size = 0;
 
-	pthread_create(&counterThread, NULL, timer_countdown, &curr_count);
-	while(curr_count > 0) // TODO Atender clientes
+	int fifo_write = open(fifo_name, O_WRONLY | O_NONBLOCK);
+	int fifo_fd = open(fifo_name, O_RDONLY);
+	if((fifo_fd <= 0) | (fifo_write <= 0))
+	{
+		printf("Error: could not open fifo.\n");
+		return 1;
+	}
+
+	counter_thr_info info;
+	info.curr_count = &curr_count;
+	info.fifo_write_fd = &fifo_write;
+	info.shop = shop;
+
+	pthread_create(&counterThread, NULL, timer_countdown, &info);
+	while(curr_count > 0)
 	{
 		str_size = read(fifo_fd, message, MAX_NAME_SIZE);
-		if(str_size <= 0)
-			continue;
+		// 0 nao aberto
 
 		thr_arg = malloc(MAX_NAME_SIZE+1);
 		message[str_size] = '\0';
@@ -52,7 +63,6 @@ int main(int argc, char *argv[])
 		// TODO Começar thread
 	}
 
-	close(fifo_fd);
 	return 0;
 	//return terminate_balcao(argv[1], shop);
 }
@@ -140,7 +150,7 @@ int terminate_balcao(char* shmem, shop_t *shop)
 {
 	time_t end = time(NULL);
 
-	shop->balcoes[ownIndex].duracao = end - shop->balcoes[ownIndex].abertura;
+	//shop->balcoes[ownIndex].duracao = end - shop->balcoes[ownIndex].abertura;
 
 	int last = 0;
 	int i = 0;
@@ -179,7 +189,8 @@ int terminate_balcao(char* shmem, shop_t *shop)
 
 void *timer_countdown(void *arg)
 {
-	int *count = (int*)arg;
+	counter_thr_info *info = (counter_thr_info*)arg;
+	int *count = info->curr_count;
 	time_t start_time = time(NULL);
 	time_t curr_time;
 	while(1)
@@ -188,11 +199,13 @@ void *timer_countdown(void *arg)
 		if(curr_time-start_time >= *count)
 		{
 			*count = 0;
-			return NULL;
+			break;
 		}
 		sleep(0.1);
 	}
 
+	info->shop->balcoes[ownIndex].duracao = time(NULL) - info->shop->balcoes[ownIndex].abertura;
+	close(*info->fifo_write_fd);
 	return NULL;
 }
 
