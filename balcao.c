@@ -1,5 +1,7 @@
 #include "balcao.h"
 
+int ownIndex;
+
 int main(int argc, char *argv[])
 {
 	if(argc != 3)
@@ -90,7 +92,6 @@ balcao_t join_shmemory(shop_t* shop)
 	thisBalcao.clientes_em_atendimento = 0;
 	thisBalcao.clientes_atendidos = 0;
 	thisBalcao.atendimento_medio = 0;
-	thisBalcao.num = shop->num_balcoes + 1;
 
 	if(pthread_mutex_lock(&shop->loja_mutex) != 0)
 	{
@@ -98,8 +99,10 @@ balcao_t join_shmemory(shop_t* shop)
 		return thisBalcao;
 	}
 
+	thisBalcao.num = shop->num_balcoes + 1;
+	ownIndex = shop->num_balcoes;
+	shop->balcoes[shop->num_balcoes] = thisBalcao;
 	shop->num_balcoes++;
-	shop->balcoes[shop->num_balcoes-1] = thisBalcao;
 
 	pthread_mutex_unlock(&shop->loja_mutex);
 
@@ -108,17 +111,41 @@ balcao_t join_shmemory(shop_t* shop)
 
 int terminate_balcao(char* shmem, shop_t *shop)
 {
-	/*pthread_mutex_lock(&shop->loja_mutex);
-	pthread_mutex_unlock(&shop->loja_mutex);	// to ensure no process is using it
-	pthread_mutex_destroy(&shop->loja_mutex);
+	time_t end = time(NULL);
 
-	// TODO terminate balcao FIFO
+	shop->balcoes[ownIndex].duracao = end - shop->balcoes[ownIndex].abertura;
 
-	if (shm_unlink(shmem) == -1)
+	int last = 0;
+	int i = 0;
+	for(; i < shop->num_balcoes; i++)
 	{
-		printf("Error: shared memory wasn't properly cleaned.\n");
-		return 1;
-	}*/
+		if(shop->balcoes[i].duracao != -1)
+		{
+			last = 1;
+			break;
+		}
+	}
+
+	if(last == 0)	// this is the last balcao active
+	{
+		pthread_mutex_lock(&shop->loja_mutex);
+		pthread_mutex_unlock(&shop->loja_mutex);	// to ensure no process is using it
+		pthread_mutex_destroy(&shop->loja_mutex);
+
+		if(unlink(shop->balcoes[ownIndex].fifo_name) != 0)
+		{
+			printf("Error: unable to unlink fifo %s\n", shop->balcoes[ownIndex].fifo_name);
+			return 1;
+		}
+
+		if (shm_unlink(shmem) == -1)
+		{
+			printf("Error: shared memory wasn't properly cleaned.\n");
+			return 1;
+		}
+	}
+
+
 
 	return 0;
 }
