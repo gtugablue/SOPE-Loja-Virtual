@@ -17,6 +17,8 @@
 #include "utils.h"
 
 #define SHARED_MEM_SIZE	(1024 * 1024)
+#define SHARED_MEM_MODE 0600
+
 #define ATTEND_END_MESSAGE "fim_atendimento"
 
 #define MAX_FIFO_NAME_LEN 20

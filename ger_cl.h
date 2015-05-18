@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 #include "utils.h"
 #include "balcao.h"
 
@@ -28,7 +29,8 @@ int parent_action();
 /*
  * @return exit status for the child process (client)
  */
-int child_action();
+int child_action(shop_t *shop);
 
+int retrieve_shop(shop_t *shop, int *key, char* shm_name);
 
 #endif
