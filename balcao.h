@@ -45,7 +45,8 @@ typedef struct
 
 	// Data variables
 	time_t opening_time;
-	int num_balcoes;
+	unsigned num_balcoes;
+	unsigned num_balcoes_abertos; // for efficiency purposes
 	balcao_t balcoes[MAX_NUM_BALCOES];
 } shop_t;
 

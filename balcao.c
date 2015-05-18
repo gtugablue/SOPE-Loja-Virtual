@@ -166,6 +166,7 @@ balcao_t join_shmemory(const char *shname, shop_t* shop)
 	int num_balcoes = shop->num_balcoes;
 	shop->balcoes[num_balcoes] = thisBalcao;
 	shop->num_balcoes++;
+	shop->num_balcoes_abertos++;
 
 	pthread_mutex_unlock(&shop->loja_mutex);
 
@@ -183,21 +184,12 @@ balcao_t join_shmemory(const char *shname, shop_t* shop)
 
 int terminate_balcao(char* shmem, shop_t *shop)
 {
-	int last = 0;
-	size_t i;
-	for(i = 0; i < shop->num_balcoes; i++)
-	{
-		if((int)shop->balcoes[i].duracao == -1)
-		{
-			last = 1;
-			break;
-		}
-	}
+	pthread_mutex_lock(&shop->loja_mutex);
+	--shop->num_balcoes_abertos;
 
-	if(last == 0)	// this is the last balcao active
+	if(shop->num_balcoes_abertos == 0)	// this is the last balcao active
 	{
-		pthread_mutex_lock(&shop->loja_mutex);
-		pthread_mutex_unlock(&shop->loja_mutex);	// to ensure no process is using it
+		pthread_mutex_unlock(&shop->loja_mutex);
 		pthread_mutex_destroy(&shop->loja_mutex);
 
 		char path[strlen(FIFO_DIR) + strlen(shop->balcoes[ownIndex].fifo_name) + 1];
@@ -217,6 +209,10 @@ int terminate_balcao(char* shmem, shop_t *shop)
 		}
 
 		printf("\nShared memory cleaned\n\n");
+	}
+	else
+	{
+		pthread_mutex_unlock(&shop->loja_mutex);
 	}
 
 	return 0;
