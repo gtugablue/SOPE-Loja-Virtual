@@ -1,4 +1,5 @@
 #include "balcao.h"
+#include "log.h"
 
 int ownIndex;
 
@@ -213,18 +214,4 @@ void *timer_countdown(void *arg)
 	info->shop->balcoes[ownIndex].duracao = time(NULL) - info->shop->balcoes[ownIndex].abertura;
 	close(*info->fifo_write_fd);
 	return NULL;
-}
-
-int initialize_log(const char *sh_name)
-{
-	char extension[] = ".log";
-	char file_name[strlen(sh_name) + strlen(extension) + 1];
-	strcpy(file_name, sh_name);
-	strcat(file_name, extension);
-	FILE *fp = fopen(file_name, "w");
-	if (fp == NULL) return 1;
-
-	if (fprintf(fp, "%18s | %6s | %7s | %18s | %16s", "quando", "quem", "balcao", "o_que", "canal_criado/usado") < 0) return 1;
-	if (fclose(fp) != 0) return 1;
-	return 0;
 }

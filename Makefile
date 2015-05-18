@@ -10,7 +10,7 @@ out_dir:
 	${MKDIR_P} ${BIN_DIR}
 	
 balcao:
-	gcc $(FLAGS) balcao.c utils.c -o ${BIN_DIR}/balcao -lrt -pthread
+	gcc $(FLAGS) balcao.c utils.c log.c -o ${BIN_DIR}/balcao -lrt -pthread
 	
 ger_cl:
-	gcc $(FLAGS) ger_cl.c utils.c -o ${BIN_DIR}/ger_cl
+	gcc $(FLAGS) ger_cl.c utils.c log.c -o ${BIN_DIR}/ger_cl
