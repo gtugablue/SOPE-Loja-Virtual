@@ -43,5 +43,6 @@ shop_t *create_shared_memory(const char *name, int *shm_id, long size);
 balcao_t join_shmemory(shop_t* shop);
 int terminate_balcao(char* shmem, shop_t *shop);
 void *timer_countdown(void *arg);
+int initialize_log(const char *sh_name);
 
 #endif

@@ -195,3 +195,13 @@ void *timer_countdown(void *arg)
 
 	return NULL;
 }
+
+int initialize_log(const char *sh_name)
+{
+	FILE *fp = fopen(sh_name, "w");
+	if (fp == NULL)
+	{
+		printf("Couldn't open log file.\n");
+		return 1;
+	}
+}
