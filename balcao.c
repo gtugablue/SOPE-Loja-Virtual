@@ -18,6 +18,12 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	if (initialize_log(argv[1]))
+	{
+		printf("Error initializing log.\n");
+		return 1;
+	}
+
 	int shm_id;
 	shop_t *shop;
 	//shop = (shop_t *)create_shared_memory(argv[1], &shm_id, SHARED_MEM_SIZE);
@@ -211,10 +217,14 @@ void *timer_countdown(void *arg)
 
 int initialize_log(const char *sh_name)
 {
-	FILE *fp = fopen(sh_name, "w");
-	if (fp == NULL)
-	{
-		printf("Couldn't open log file.\n");
-		return 1;
-	}
+	char extension[] = ".log";
+	char file_name[strlen(sh_name) + strlen(extension) + 1];
+	strcpy(file_name, sh_name);
+	strcat(file_name, extension);
+	FILE *fp = fopen(file_name, "w");
+	if (fp == NULL) return 1;
+
+	if (fprintf(fp, "%18s | %6s | %7s | %18s | %16s", "quando", "quem", "balcao", "o_que", "canal_criado/usado") < 0) return 1;
+	if (fclose(fp) != 0) return 1;
+	return 0;
 }
