@@ -13,4 +13,4 @@ balcao:
 	gcc $(FLAGS) balcao.c utils.c log.c -o ${BIN_DIR}/balcao -lrt -pthread
 	
 ger_cl:
-	gcc $(FLAGS) ger_cl.c utils.c log.c -o ${BIN_DIR}/ger_cl
+	gcc $(FLAGS) ger_cl.c utils.c log.c -o ${BIN_DIR}/ger_cl -lrt

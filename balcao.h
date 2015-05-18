@@ -50,6 +50,7 @@ typedef struct
 } shop_t;
 
 #define SHARED_MEM_SIZE	sizeof(shop_t)
+#define SHARED_MEM_MODE 0600
 
 typedef struct {
 	int *curr_count;
