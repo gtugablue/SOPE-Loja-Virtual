@@ -134,12 +134,14 @@ balcao_t join_shmemory(shop_t* shop)
 		return thisBalcao;
 	}
 
-	thisBalcao.num = shop->num_balcoes + 1;
-	ownIndex = shop->num_balcoes;
-	shop->balcoes[shop->num_balcoes] = thisBalcao;
+	int num_balcoes = shop->num_balcoes;
+	shop->balcoes[num_balcoes] = thisBalcao;
 	shop->num_balcoes++;
 
 	pthread_mutex_unlock(&shop->loja_mutex);
+
+	thisBalcao.num = num_balcoes + 1;
+	ownIndex = num_balcoes;
 
 	return thisBalcao;
 }
