@@ -218,7 +218,7 @@ int child_action(shop_t *shop)
 
 int retrieve_shop(shop_t *shop, int *key, char *shm_name)
 {
-	int result = shm_open(shm_name, O_CREAT | O_EXCL | O_RDWR, SHARED_MEM_MODE);
+	int result = shm_open(shm_name, O_RDWR, SHARED_MEM_MODE);
 
 	if(result < 0)
 		return 1;
