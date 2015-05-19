@@ -29,7 +29,7 @@ int parent_action();
 /*
  * @return exit status for the child process (client)
  */
-int child_action(shop_t *shop);
+int child_action(const char *shname, shop_t *shop);
 
 int retrieve_shop(shop_t *shop, int *key, char* shm_name);
 
