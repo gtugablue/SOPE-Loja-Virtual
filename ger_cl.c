@@ -94,9 +94,11 @@ int child_action(const char *shname, shop_t *shop)
 		printf("Error: unable to create client FIFO.\n");
 		return 1;
 	}
-
+	printf("aaaddd\n");
 	int fifo_write = open(fifo_pathname, O_WRONLY | O_NONBLOCK);
+	printf("aaaddd2\n");
 	int fifo_read = open(fifo_pathname, O_RDONLY);
+	printf("aaaddd3\n");
 	if(fifo_read < 0 || fifo_write < 0)
 	{
 		printf("Error: unable to open client FIFO for reading.\n");
@@ -111,13 +113,13 @@ int child_action(const char *shname, shop_t *shop)
 	size_t min_occup_index = -1;
 	size_t i;
 	int balcao_fifo_fd = -1;
-
+	printf("aaaddd4\n");
 	if(pthread_mutex_lock(&shop->loja_mutex) != 0)
 	{
 		printf("Error: unable to lock \"loja\" mutex.\n");
 		return 1;
 	}
-
+	printf("dea\n");
 	size_t num_balcoes = shop->num_balcoes;
 
 	if(num_balcoes > 0)
@@ -181,9 +183,10 @@ int child_action(const char *shname, shop_t *shop)
 			return 1;
 		}
 
+		printf("derp\n");
 		if (write_log_entry(shname, CLIENT, min_occup_index + 1, "pede_atendimento", shop->balcoes[min_occup_index].fifo_name))
 		{
-
+			printf("Warning: could not write to logfile.\n");
 		}
 
 		if(pthread_mutex_unlock(&shop->loja_mutex) != 0)
