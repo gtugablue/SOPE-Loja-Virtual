@@ -111,7 +111,7 @@ shop_t *create_shared_memory(const char *name, int *shm_id, long size)
 		shop.num_balcoes = 0;
 
 		shop_t *shmem;
-		shmem = (shop_t *) mmap(0,size, PROT_READ|PROT_WRITE, MAP_SHARED, *shm_id, 0);
+		shmem = (shop_t *) mmap(0,size, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_SHARED, *shm_id, 0);
 		*shmem = shop;
 
 		if (initialize_log(name))

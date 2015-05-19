@@ -50,6 +50,8 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	printf("=>shop(%d)\n", shop->num_balcoes);
+
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// Initialize child processes /////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +79,7 @@ int main(int argc, char **argv)
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
 	if(fork_return == 0)	// Child-processes - each represents a client who chooses a "balcao" to be attended at
-		return child_action(non_opt_args[0], shop);
+		return child_action(non_opt_args[0]);
 	else					// Parent-process - must wait for each child to finnish before terminating
 		return parent_action();
 
@@ -94,15 +96,24 @@ int parent_action()
 	{
 		if(child_status != 0)
 		{
-			return 3;
+			printf("\n\t%s - ERROR: Unexpected child process return (value %d)\n\n", own_name, child_status);
+			return child_status;
 		}
 	}
 
 	return 0;
 }
 
-int child_action(const char *shname, shop_t *shop)
+int child_action(char *shname)
 {
+	shop_t *shop = NULL;
+	int shm_key = 0;
+	if(retrieve_shop(shop, &shm_key, shname) != 0)
+	{
+		printf("\n\t%s - ERROR: Unable to open the specified memory region\n\n", own_name);
+		return 1;
+	}
+
 	if(debug) printf("\t==> DEBUG[%s]: Child working\n", own_name);
 
 	int pid = getpid();
@@ -123,8 +134,8 @@ int child_action(const char *shname, shop_t *shop)
 		return 1;
 	}
 
-	int fifo_write = open(fifo_pathname, O_WRONLY | O_NONBLOCK);
-	int fifo_read = open(fifo_pathname, O_RDONLY);
+	int fifo_read = open(fifo_pathname, O_RDONLY | O_NONBLOCK);
+	int fifo_write = open(fifo_pathname, O_WRONLY);
 	if(debug) printf("\t==> DEBUG[%s]: Created fifo write(%d) read(%d)\n", own_name, fifo_write, fifo_read);
 	if(fifo_read < 0 || fifo_write < 0)
 	{
@@ -142,7 +153,7 @@ int child_action(const char *shname, shop_t *shop)
 	size_t i;
 	int balcao_fifo_fd = -1;
 	if(debug) printf("\t==> DEBUG[%s]: First loja lock\n", own_name);
-	if(pthread_mutex_lock(&shop->loja_mutex) != 0)
+	if(pthread_mutex_lock(&(shop->loja_mutex)) != 0)
 	{
 		printf("Error: unable to lock \"loja\" mutex.\n");
 		return 1;
@@ -260,7 +271,7 @@ int retrieve_shop(shop_t *shop, int *key, char *shm_name)
 		return 1;
 
 	*key = result;
-	shop = (shop_t *) mmap(0,SHARED_MEM_SIZE,PROT_READ|PROT_WRITE,MAP_SHARED,*key,0);
+	shop = (shop_t *) mmap(0,SHARED_MEM_SIZE,PROT_READ|PROT_WRITE|PROT_EXEC,MAP_SHARED,*key,0);
 
 	return 0;
 }
