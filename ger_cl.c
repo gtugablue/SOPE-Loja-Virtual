@@ -1,8 +1,8 @@
 #include "ger_cl.h"
+#include "log.h"
 
 int main(int argc, char **argv)
 {
-
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////// Check if arguments are valid and initialize variables /////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////
@@ -51,11 +51,11 @@ int main(int argc, char **argv)
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////
-	/////////////// Give each process it's task (parent waits, child becomes client ////////////////
+	/////////////// Give each process it's task (parent waits, child becomes client) ///////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
 	if(fork_return == 0)	// Child-processes - each represents a client who chooses a "balcao" to be attended at
-		return child_action(shop);
+		return child_action(argv[1], shop);
 	else					// Parent-process - must wait for each child to finnish before terminating
 		return parent_action();
 
@@ -77,7 +77,7 @@ int parent_action()
 	return 0;
 }
 
-int child_action(shop_t *shop)
+int child_action(const char *shname, shop_t *shop)
 {
 	int pid = getpid();
 	char* pid_str = malloc(MAX_FIFO_NAME_LEN);
@@ -179,6 +179,11 @@ int child_action(shop_t *shop)
 			}
 
 			return 1;
+		}
+
+		if (write_log_entry(shname, CLIENT, min_occup_index + 1, "pede_atendimento", shop->balcoes[min_occup_index].fifo_name))
+		{
+
 		}
 
 		if(pthread_mutex_unlock(&shop->loja_mutex) != 0)
