@@ -71,18 +71,24 @@ int main(int argc, char *argv[])
 	while(curr_count > 0)
 	{
 		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN);
-		if(str_size <= 0 || message[0] != '\\') continue;
+		if(str_size <= 0 || message[0] != '/') continue;
 
-		thr_arg = malloc(MAX_FIFO_NAME_LEN+1);
+		thr_arg = malloc(MAX_FIFO_NAME_LEN+1); // TODO check for errors and free
 		message[str_size] = '\0';
 		strcpy(thr_arg, message);
 		attend_thr_info cl_info;
 		cl_info.cl_fifo = thr_arg;
+		cl_info.shname = argv[1];
+		shop->balcoes[ownIndex].clientes_em_atendimento++; // TODO mutex?
 		int duration = shop->balcoes[ownIndex].clientes_em_atendimento + 1;
 		if(duration > 10) duration = 10;
 		cl_info.duration = duration;
-
 		pthread_create(&attendThread, NULL, attend_client, &cl_info);
+		if (write_log_entry(argv[1], BALCAO, 1, "inicia_atend_cli", cl_info.cl_fifo))
+		{
+			printf("Error writting to log.\n");
+			return 1;
+		}
 	}
 
 	//return 0;
@@ -263,19 +269,22 @@ void *timer_countdown(void *arg)
 void *attend_client(void *arg)
 {
 	char *cl_fifo = ((attend_thr_info*)arg)->cl_fifo;
-	printf("Cl fifo [%s]\n", cl_fifo);
 	int duration = ((attend_thr_info*)arg)->duration;
-
 	sleep(duration);
-
 	int cl_fifo_fd = open(cl_fifo, O_WRONLY);
-
 	if(cl_fifo_fd > 0)
 	{
-		char *message = ATTEND_END_MESSAGE;
 		int r;
-		if((r = write(cl_fifo_fd, message, strlen(message))) != strlen(message))
+		if((r = write(cl_fifo_fd, ATTEND_END_MESSAGE, strlen(ATTEND_END_MESSAGE) + 1)) != strlen(ATTEND_END_MESSAGE) + 1)
 			printf("Error: different bytes written(%d)\n", r);
+		else
+		{
+			if (write_log_entry(((attend_thr_info*)arg)->shname, BALCAO, 1, "fim_atend_cl", cl_fifo))
+			{
+				return NULL;
+			}
+
+		}
 		close(cl_fifo_fd);
 	}
 

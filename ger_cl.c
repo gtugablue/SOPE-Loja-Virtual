@@ -186,7 +186,7 @@ int child_action(char *shname, int key)
 		printf("\t==> DEBUG[%s]: Balcao path[%s]\n", own_name, path);
 #endif
 		balcao_fifo_fd = open(path, O_WRONLY);
-
+		printf("Successfully opened FIFO for writting.\n");
 		if(balcao_fifo_fd < 0)
 		{
 			printf("Error: unable to open \"balcao\" FIFO.\n");
@@ -238,7 +238,13 @@ int child_action(char *shname, int key)
 			printf("Read succesfully: %s\n", balcao_message);
 
 			if(strcmp(balcao_message, ATTEND_END_MESSAGE) == 0)
+			{
+				if (write_log_entry(shname, CLIENT, min_occup_index + 1, "fim_atendimento", getpid())) // TODO change fifo name
+				{
+					printf("Warning: could not write to logfile.\n");
+				}
 				break;
+			}
 		}
 
 		if(attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao") != 0) return 1;

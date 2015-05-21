@@ -64,6 +64,7 @@ typedef struct {
 typedef struct {
 	int duration;
 	char *cl_fifo;
+	const char *shname;
 } attend_thr_info;
 
 int main(int argc, char *argv[]);
