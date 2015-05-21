@@ -57,7 +57,7 @@ typedef struct
 
 typedef struct {
 	int *curr_count;
-	int *fifo_write_fd;
+	char *path;
 	shop_t *shop;
 } counter_thr_info;
 
