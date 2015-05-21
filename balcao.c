@@ -52,27 +52,22 @@ int main(int argc, char *argv[])
 	char path[strlen(FIFO_DIR) + strlen(fifo_name) + 1];
 	strcpy(path, FIFO_DIR);
 	strcat(path, fifo_name);
-	int fifo_fd = open(path, O_RDONLY | O_NONBLOCK);
-	int fifo_write = open(path, O_WRONLY);
-	if((fifo_fd <= 0) | (fifo_write <= 0))
+
+	counter_thr_info info;
+	info.curr_count = &curr_count;
+	info.path = path;
+	info.shop = shop;
+	printf("debug1\n");
+	pthread_create(&counterThread, NULL, timer_countdown, &info);
+	printf("debug2\n");
+	int fifo_fd = open(path, O_RDONLY);
+	printf("debug3\n");
+	if(fifo_fd <= 0)
 	{
 		printf("Error: could not open fifo.\n");
 		return 1;
 	}
 
-	///////////////////////////////////////////////////////
-	///////////////// Thread deployment ///////////////////
-	///////////////////////////////////////////////////////
-
-	write(fifo_write, "hello", strlen("hello"));
-
-	counter_thr_info info;
-	info.curr_count = &curr_count;
-	info.fifo_write_fd = &fifo_write;
-	info.shop = shop;
-
-	printf("\t==> Starting while\n");
-	pthread_create(&counterThread, NULL, timer_countdown, &info);
 	while(curr_count > 0)
 	{
 		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN);
@@ -241,6 +236,12 @@ int terminate_balcao(char* shmem, shop_t *shop)
 void *timer_countdown(void *arg)
 {
 	counter_thr_info *info = (counter_thr_info*)arg;
+	int fifo_write = open(info->path, O_WRONLY);
+	if (fifo_write <= 0)
+	{
+		printf("Error: could not open fifo.\n");
+		return NULL;
+	}
 	int *count = info->curr_count;
 	time_t start_time = time(NULL);
 	time_t curr_time;
@@ -255,8 +256,8 @@ void *timer_countdown(void *arg)
 		sleep(0.1);
 	}
 
-	info->shop->balcoes[ownIndex].duracao = time(NULL) - info->shop->balcoes[ownIndex].abertura;
-	close(*info->fifo_write_fd);
+	info->shop->balcoes[ownIndex].duracao = time(NULL) - info->shop->balcoes[ownIndex].abertura; // TODO mutex
+	close(fifo_write);
 	return NULL;
 }
 
