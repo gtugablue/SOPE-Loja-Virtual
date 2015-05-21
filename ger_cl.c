@@ -1,6 +1,8 @@
 #include "ger_cl.h"
 #include "log.h"
 
+#define NDEBUG
+
 int debug;
 char *own_name;
 
@@ -10,13 +12,14 @@ int main(int argc, char **argv)
 	//////////////////// Check if arguments are valid and initialize variables /////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
-	if(debug) printf("\t==> DEBUG[%s]: Starting ger_cl\n", argv[0]);
+#ifndef NDEBUG
+	printf("\t==> DEBUG[%s]: Starting ger_cl\n", argv[0]);
+#endif
 
 	own_name = argv[0];
 	int i;
 	int non_optional = 0;
 	char *non_opt_args[argc-1];
-	debug = 0;
 
 	for (i = 1; i < argc; i++)
 	{
@@ -26,7 +29,9 @@ int main(int argc, char **argv)
 			non_opt_args[non_optional++] = argv[i];
 	}
 
-	if(debug) printf("\t==> DEBUG[%s]: Verifying arguments\n", argv[0]);
+#ifndef NDEBUG
+	printf("\t==> DEBUG[%s]: Verifying arguments\n", argv[0]);
+#endif
 
 	if(non_optional != 2)
 	{
@@ -56,7 +61,9 @@ int main(int argc, char **argv)
 	/////////////////////////////// Initialize child processes /////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
-	if(debug) printf("\t==> DEBUG[%s]: Creating child processes\n", argv[0]);
+#ifndef NDEBUG
+	printf("\t==> DEBUG[%s]: Creating child processes\n", argv[0]);
+#endif
 
 	int temp = 0;
 	int fork_return = 0;
@@ -88,7 +95,9 @@ int main(int argc, char **argv)
 
 int parent_action()
 {
-	if(debug) printf("\t==> DEBUG[%s]: Parent working\n", own_name);
+#ifndef NDEBUG
+	printf("\t==> DEBUG[%s]: Parent working\n", own_name);
+#endif
 
 	int child_status = 0;
 
@@ -114,7 +123,9 @@ int child_action(char *shname)
 		return 1;
 	}
 
-	if(debug) printf("\t==> DEBUG[%s]: Child working\n", own_name);
+#ifndef NDEBUG
+	printf("\t==> DEBUG[%s]: Child working\n", own_name);
+#endif
 
 	int pid = getpid();
 	char* pid_str = malloc(MAX_FIFO_NAME_LEN);
@@ -126,7 +137,9 @@ int child_action(char *shname)
 
 	free(pid_str);
 
-	if(debug) printf("\t==> DEBUG[%s]: Constructed fifo_pathname \"%s\"\n", own_name, fifo_pathname);
+#ifndef NDEBUG
+	printf("\t==> DEBUG[%s]: Constructed fifo_pathname \"%s\"\n", own_name, fifo_pathname);
+#endif
 
 	if(mkfifo(fifo_pathname, CL_FIFO_MODE) != 0)
 	{
@@ -136,13 +149,17 @@ int child_action(char *shname)
 
 	int fifo_read = open(fifo_pathname, O_RDONLY | O_NONBLOCK);
 	int fifo_write = open(fifo_pathname, O_WRONLY);
-	if(debug) printf("\t==> DEBUG[%s]: Created fifo write(%d) read(%d)\n", own_name, fifo_write, fifo_read);
+#ifndef NDEBUG
+	printf("\t==> DEBUG[%s]: Created fifo write(%d) read(%d)\n", own_name, fifo_write, fifo_read);
+#endif
 	if(fifo_read < 0 || fifo_write < 0)
 	{
 		printf("Error: unable to open client FIFO for reading.\n");
 		return 1;
 	}
-	if(debug) printf("\t==> DEBUG[%s]: FIFO opening successful\n", own_name);
+#ifndef NDEBUG
+	printf("\t==> DEBUG[%s]: FIFO opening successful\n", own_name);
+#endif
 
 	int fifo_pathname_len = strlen(fifo_pathname);
 	fifo_pathname[fifo_pathname_len++] = '\0';
@@ -152,13 +169,17 @@ int child_action(char *shname)
 	size_t min_occup_index = -1;
 	size_t i;
 	int balcao_fifo_fd = -1;
-	if(debug) printf("\t==> DEBUG[%s]: First loja lock\n", own_name);
+#ifndef NDEBUG
+	printf("\t==> DEBUG[%s]: First loja lock\n", own_name);
+#endif
 	if(pthread_mutex_lock(&(shop->loja_mutex)) != 0)
 	{
 		printf("Error: unable to lock \"loja\" mutex.\n");
 		return 1;
 	}
-	if(debug) printf("\t==> DEBUG[%s]: Accessing loja\n", own_name);
+#ifndef NDEBUG
+	printf("\t==> DEBUG[%s]: Accessing loja\n", own_name);
+#endif
 	size_t num_balcoes = shop->num_balcoes;
 
 	if(num_balcoes > 0)
