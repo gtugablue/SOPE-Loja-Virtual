@@ -50,8 +50,6 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	printf("=>shop(%d)\n", shop->num_balcoes);
-
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// Initialize child processes /////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +77,7 @@ int main(int argc, char **argv)
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
 	if(fork_return == 0)	// Child-processes - each represents a client who chooses a "balcao" to be attended at
-		return child_action(non_opt_args[0]);
+		return child_action(non_opt_args[0], shm_key);
 	else					// Parent-process - must wait for each child to finnish before terminating
 		return parent_action();
 
@@ -104,27 +102,16 @@ int parent_action()
 	return 0;
 }
 
-int child_action(char *shname)
+int child_action(char *shname, int key)
 {
-	shop_t *shop = NULL;
-	int shm_key = 0;
-	if(retrieve_shop(shop, &shm_key, shname) != 0)
-	{
-		printf("\n\t%s - ERROR: Unable to open the specified memory region\n\n", own_name);
-		return 1;
-	}
+	shop_t *shop = child_remap_shmem(shname, key);
+	if(shop == NULL) return 1;
 
 	if(debug) printf("\t==> DEBUG[%s]: Child working\n", own_name);
 
-	int pid = getpid();
-	char* pid_str = malloc(MAX_FIFO_NAME_LEN);
-	sprintf(pid_str, "%d", pid);
-
-	char fifo_pathname[MAX_FIFO_NAME_LEN];
-	strcpy(fifo_pathname, CL_FIFO_NAME);
-	strcpy(fifo_pathname + strlen(CL_FIFO_NAME), pid_str);		// fifo_pathname now has the complete path for the fifo
-
-	free(pid_str);
+	char* fifo_pathname = get_fifo_pathname(getpid());
+	int fifo_pathname_len = strlen(fifo_pathname);
+	fifo_pathname[fifo_pathname_len++] = '\0';
 
 	if(debug) printf("\t==> DEBUG[%s]: Constructed fifo_pathname \"%s\"\n", own_name, fifo_pathname);
 
@@ -144,8 +131,6 @@ int child_action(char *shname)
 	}
 	if(debug) printf("\t==> DEBUG[%s]: FIFO opening successful\n", own_name);
 
-	int fifo_pathname_len = strlen(fifo_pathname);
-	fifo_pathname[fifo_pathname_len++] = '\0';
 	char balcao_message[MAX_FIFO_NAME_LEN];
 
 	int min_occup = INT_MAX;
@@ -153,55 +138,44 @@ int child_action(char *shname)
 	size_t i;
 	int balcao_fifo_fd = -1;
 	if(debug) printf("\t==> DEBUG[%s]: First loja lock\n", own_name);
-	if(pthread_mutex_lock(&(shop->loja_mutex)) != 0)
-	{
-		printf("Error: unable to lock \"loja\" mutex.\n");
-		return 1;
-	}
+
+	if(attempt_mutex_lock(&(shop->loja_mutex), "loja") != 0) return 1;
+
 	if(debug) printf("\t==> DEBUG[%s]: Accessing loja\n", own_name);
 	size_t num_balcoes = shop->num_balcoes;
 
 	if(num_balcoes > 0)
 	{
+		if(debug) printf("\t==> DEBUG[%s]: Choosing balcao\n", own_name);
 		for(i = 0; i < num_balcoes; i++)
 		{
-			if(shop->balcoes[i].duracao == -1)
+			printf("balcao[%d][%d], %d clientes\n", (int)i, shop->balcoes[i].num, shop->balcoes[i].clientes_em_atendimento);
+			if((shop->balcoes[i].duracao == -1) && (shop->balcoes[i].clientes_em_atendimento < min_occup))
 			{
-				if(shop->balcoes[i].clientes_em_atendimento < min_occup)
-				{
-					min_occup = shop->balcoes[i].clientes_em_atendimento;
-					min_occup_index = i;
-				}
+				min_occup = shop->balcoes[i].clientes_em_atendimento;
+				min_occup_index = i;
 			}
 		}
 
-		if(pthread_mutex_lock(&shop->balcoes[min_occup_index].balcao_mutex) != 0)
-		{
-			printf("Error: unable to lock \"balcao\" mutex.\n");
+		if(debug) printf("\t==> DEBUG[%s]: Chosen balcao %d\n", own_name, shop->balcoes[min_occup_index].num);
 
-			if(pthread_mutex_unlock(&shop->loja_mutex) != 0)
-			{
-				printf("Error: unable to unlock \"loja\" mutex.\n");
-			}
+		if(attempt_mutex_lock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao") != 0)
+		{
+			attempt_mutex_unlock(&(shop->loja_mutex), "loja");
 			return 1;
 		}
 
+		if(attempt_mutex_unlock(&(shop->loja_mutex), "loja") != 0) return 1;
+
+		if(debug) printf("\t==> DEBUG[%s]: Writing to balcao\n", own_name);
 		balcao_fifo_fd = open(shop->balcoes[min_occup_index].fifo_name, O_WRONLY);
 
 		if(balcao_fifo_fd < 0)
 		{
 			printf("Error: unable to open \"balcao\" FIFO.\n");
 
-			if(pthread_mutex_unlock(&shop->balcoes[min_occup_index].balcao_mutex) != 0)
-			{
-				printf("Error: unable to unlock \"balcao\" mutex.\n");
-			}
-
-			if(pthread_mutex_unlock(&shop->loja_mutex) != 0)
-			{
-				printf("Error: unable to unlock \"loja\" mutex.\n");
-			}
-
+			attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao");
+			attempt_mutex_unlock(&(shop->loja_mutex), "loja");
 			return 1;
 		}
 
@@ -209,31 +183,18 @@ int child_action(char *shname)
 		{
 			printf("Error: problems writing to \"balcao\" FIFO.\n");
 
-			if(pthread_mutex_unlock(&shop->balcoes[i].balcao_mutex) != 0)
-			{
-				printf("Error: unable to unlock \"balcao\" mutex.\n");
-			}
-
-			if(pthread_mutex_unlock(&shop->loja_mutex) != 0)
-			{
-				printf("Error: unable to unlock \"loja\" mutex.\n");
-			}
+			attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao");
+			attempt_mutex_unlock(&(shop->loja_mutex), "balcao");
 
 			return 1;
 		}
 
-		printf("derp\n");
 		if (write_log_entry(shname, CLIENT, min_occup_index + 1, "pede_atendimento", shop->balcoes[min_occup_index].fifo_name))
 		{
 			printf("Warning: could not write to logfile.\n");
 		}
 
-		if(pthread_mutex_unlock(&shop->loja_mutex) != 0)
-		{
-			printf("Error: unable to unlock \"loja\" mutex.\n");
-			return 1;
-		}
-
+		if(debug) printf("\t==> DEBUG[%s]: Read from balcao\n", own_name);
 		while(1)
 		{
 			read(fifo_read, balcao_message, MAX_FIFO_NAME_LEN);
@@ -242,37 +203,85 @@ int child_action(char *shname)
 				break;
 		}
 
-		close(fifo_read);
-		close(fifo_write);
-
-		if(unlink(fifo_pathname) != 0)
-		{
-			printf("Error: unable to unlink client FIFO.\n");
-			return 1;
-		}
+		if(attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao") != 0) return 1;
 	}
 	else
 	{
-		if(pthread_mutex_unlock(&shop->loja_mutex) != 0)
+		if(attempt_mutex_unlock(&(shop->loja_mutex), "loja") != 0)
 			printf("Error: unable to unlock \"loja\" mutex.\n");
 
-		printf("Error: the shop specified has no valid balcons.\n");
+		printf("Error: the specified shop has no valid balcons.\n");
 		return 1;
 	}
 
+	if(debug) printf("\t==> DEBUG[%s]: Finishing well\n", own_name);
+
+	close(fifo_read);
+	close(fifo_write);
+	if(unlink(fifo_pathname) != 0) {
+		printf("Error: unable to unlink client FIFO.\n");
+		return 1;
+	}
+	free(fifo_pathname);
 	return 0;
 }
 
 int retrieve_shop(shop_t *shop, int *key, char *shm_name)
 {
-	int result = shm_open(shm_name, O_RDWR, SHARED_MEM_MODE);
-
-	if(result < 0)
+	if((*key = shm_open(shm_name, O_RDWR, SHARED_MEM_MODE)) < 0)
 		return 1;
 
-	*key = result;
-	shop = (shop_t *) mmap(0,SHARED_MEM_SIZE,PROT_READ|PROT_WRITE|PROT_EXEC,MAP_SHARED,*key,0);
+	shop = (shop_t *) mmap(0,SHARED_MEM_SIZE,PROT_READ|PROT_WRITE,MAP_SHARED,*key,0);
+	if(shop == MAP_FAILED)
+		return 1;
 
 	return 0;
 }
+
+char *get_fifo_pathname(int pid)
+{
+	char* pid_str = malloc(MAX_FIFO_NAME_LEN);
+	sprintf(pid_str, "%d", pid);
+
+	char *fifo_pathname = malloc(MAX_FIFO_NAME_LEN);
+	strcpy(fifo_pathname, CL_FIFO_NAME);
+	strcpy(fifo_pathname + strlen(CL_FIFO_NAME), pid_str);		// fifo_pathname now has the complete path for the fifo
+
+	free(pid_str);
+
+	return fifo_pathname;
+}
+
+shop_t *child_remap_shmem(char* shmem_name, int key)
+{
+	shop_t *shop = NULL;
+	shop = (shop_t *) mmap(0,SHARED_MEM_SIZE,PROT_READ|PROT_WRITE,MAP_SHARED,key,0);
+	if(shop == MAP_FAILED)
+	{
+		printf("Error: unable to remap shmem on child process");
+		return NULL;
+	}
+	return shop;
+}
+
+int attempt_mutex_lock(pthread_mutex_t *mutex, char *name)
+{
+	if(pthread_mutex_lock(mutex) != 0)
+	{
+		printf("Error: unable to lock \"%s\" mutex.\n", name);
+		return 1;
+	}
+	return 0;
+}
+
+int attempt_mutex_unlock(pthread_mutex_t *mutex, char *name)
+{
+	if(pthread_mutex_unlock(mutex) != 0)
+	{
+		printf("Error: unable to unlock \"%s\" mutex.\n", name);
+		return 1;
+	}
+	return 0;
+}
+
 

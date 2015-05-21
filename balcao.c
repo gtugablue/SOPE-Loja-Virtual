@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 
 	int shm_id = -1;
 	shop_t *shop = NULL;
-	shop = (shop_t *)create_shared_memory(argv[1], &shm_id, SHARED_MEM_SIZE);
+	shop = (shop_t *)create_shared_memory(argv[1], &shm_id);
 	if (shop == NULL) return 1;
 
 	balcao_t balcao = join_shmemory(argv[1], shop);
@@ -87,16 +87,16 @@ int main(int argc, char *argv[])
 	return terminate_balcao(argv[1], shop);
 }
 
-shop_t *create_shared_memory(const char *name, int *shm_id, long size)
+shop_t *create_shared_memory(const char *name, int *shm_id)
 {
-	if((*shm_id = shm_open(name, O_RDWR, 0600)) < 0)
+	if((*shm_id = shm_open(name, O_RDWR, SHARED_MEM_MODE)) < 0)
 	{
 		if((*shm_id = shm_open(name, O_CREAT | O_EXCL | O_RDWR, SHARED_MEM_MODE)) < 0)
 		{
 			printf("Error: couldn't create/open shared memory.\n");
 			return NULL;
 		}
-		if (ftruncate(*shm_id, size) == -1)
+		if (ftruncate(*shm_id, SHARED_MEM_SIZE) == -1)
 		{
 			printf("Error: couldn't allocate space in the shared memory.\n");
 			return NULL;
@@ -111,7 +111,12 @@ shop_t *create_shared_memory(const char *name, int *shm_id, long size)
 		shop.num_balcoes = 0;
 
 		shop_t *shmem;
-		shmem = (shop_t *) mmap(0,size, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_SHARED, *shm_id, 0);
+		shmem = (shop_t *) mmap(0,SHARED_MEM_SIZE, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_SHARED, *shm_id, 0);
+		if(shmem == MAP_FAILED)
+		{
+			printf("Error mapping shared memory.\n");
+			return NULL;
+		}
 		*shmem = shop;
 
 		if (initialize_log(name))
@@ -129,7 +134,7 @@ shop_t *create_shared_memory(const char *name, int *shm_id, long size)
 	}
 
 	shop_t *shmem;
-	shmem = (shop_t *) mmap(0,size,PROT_READ|PROT_WRITE,MAP_SHARED,*shm_id,0);
+	shmem = (shop_t *) mmap(0,SHARED_MEM_SIZE,PROT_READ|PROT_WRITE,MAP_SHARED,*shm_id,0);
 	return shmem;
 }
 
@@ -142,6 +147,8 @@ balcao_t join_shmemory(const char *shname, shop_t* shop)
 
 	thisBalcao.abertura = curr_time;
 	thisBalcao.duracao = (time_t)-1;
+	pthread_mutex_t mt = PTHREAD_MUTEX_INITIALIZER;
+	thisBalcao.balcao_mutex = mt;
 	sprintf(thisBalcao.fifo_name, "fb_%d", pid);
 	char path[strlen(thisBalcao.fifo_name) + 1 + strlen(FIFO_DIR)];
 	strcpy(path, FIFO_DIR);
@@ -152,6 +159,8 @@ balcao_t join_shmemory(const char *shname, shop_t* shop)
 		printf("Error: unable to create FIFO %s\n", thisBalcao.fifo_name);
 		return thisBalcao;
 	}
+
+	// TODO add fifo path to balcao
 
 	thisBalcao.clientes_em_atendimento = 0;
 	thisBalcao.clientes_atendidos = 0;
@@ -164,13 +173,13 @@ balcao_t join_shmemory(const char *shname, shop_t* shop)
 	}
 
 	int num_balcoes = shop->num_balcoes;
+	thisBalcao.num = num_balcoes + 1;
 	shop->balcoes[num_balcoes] = thisBalcao;
 	shop->num_balcoes++;
 	shop->num_balcoes_abertos++;
 
 	pthread_mutex_unlock(&shop->loja_mutex);
 
-	thisBalcao.num = num_balcoes + 1;
 	ownIndex = num_balcoes;
 
 	if (write_log_entry(shname, BALCAO, thisBalcao.num, "cria_linh_mempart", thisBalcao.fifo_name))
