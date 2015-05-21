@@ -23,6 +23,8 @@
 
 #define MAX_NUM_BALCOES 30
 
+#define FIFO_DIR "/tmp/"
+
 typedef struct Balcao_t
 {
 	// Synchronizing variables
@@ -65,7 +67,7 @@ typedef struct {
 } attend_thr_info;
 
 int main(int argc, char *argv[]);
-shop_t *create_shared_memory(const char *name, int *shm_id, long size);
+shop_t *create_shared_memory(const char *name, int *shm_id);
 balcao_t join_shmemory(const char *shname, shop_t* shop);
 int terminate_balcao(char* shmem, shop_t *shop);
 void *timer_countdown(void *arg);

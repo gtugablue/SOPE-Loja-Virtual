@@ -1,8 +1,6 @@
 #include "balcao.h"
 #include "log.h"
 
-#define FIFO_DIR "/tmp/"
-
 int ownIndex;
 
 int main(int argc, char *argv[])
@@ -15,6 +13,11 @@ int main(int argc, char *argv[])
 	{
 		printf("\n\t%s: Invalid number of arguments.\n\tMust be: %s <shared_memory_name> <opening_time>\n\n", argv[0], argv[0]);
 		return 1;
+	}
+
+	if(strcmp("-c", argv[1]) == 0) {
+		shm_unlink(argv[2]);
+		return 0;
 	}
 
 	int opening_duration = 0;
@@ -31,7 +34,7 @@ int main(int argc, char *argv[])
 
 	int shm_id = -1;
 	shop_t *shop = NULL;
-	shop = (shop_t *)create_shared_memory(argv[1], &shm_id, SHARED_MEM_SIZE);
+	shop = (shop_t *)create_shared_memory(argv[1], &shm_id);
 	if (shop == NULL) return 1;
 
 	balcao_t balcao = join_shmemory(argv[1], shop);
@@ -70,6 +73,7 @@ int main(int argc, char *argv[])
 	while(curr_count > 0)
 	{
 		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN);
+		if(str_size <= 0 || message[0] != '\\') continue;
 
 		thr_arg = malloc(MAX_FIFO_NAME_LEN+1);
 		message[str_size] = '\0';
@@ -87,16 +91,16 @@ int main(int argc, char *argv[])
 	return terminate_balcao(argv[1], shop);
 }
 
-shop_t *create_shared_memory(const char *name, int *shm_id, long size)
+shop_t *create_shared_memory(const char *name, int *shm_id)
 {
-	if((*shm_id = shm_open(name, O_RDWR, 0600)) < 0)
+	if((*shm_id = shm_open(name, O_RDWR, SHARED_MEM_MODE)) < 0)
 	{
 		if((*shm_id = shm_open(name, O_CREAT | O_EXCL | O_RDWR, SHARED_MEM_MODE)) < 0)
 		{
 			printf("Error: couldn't create/open shared memory.\n");
 			return NULL;
 		}
-		if (ftruncate(*shm_id, size) == -1)
+		if (ftruncate(*shm_id, SHARED_MEM_SIZE) == -1)
 		{
 			printf("Error: couldn't allocate space in the shared memory.\n");
 			return NULL;
@@ -111,7 +115,12 @@ shop_t *create_shared_memory(const char *name, int *shm_id, long size)
 		shop.num_balcoes = 0;
 
 		shop_t *shmem;
-		shmem = (shop_t *) mmap(0,size, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_SHARED, *shm_id, 0);
+		shmem = (shop_t *) mmap(0,SHARED_MEM_SIZE, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_SHARED, *shm_id, 0);
+		if(shmem == MAP_FAILED)
+		{
+			printf("Error mapping shared memory.\n");
+			return NULL;
+		}
 		*shmem = shop;
 
 		if (initialize_log(name))
@@ -129,7 +138,7 @@ shop_t *create_shared_memory(const char *name, int *shm_id, long size)
 	}
 
 	shop_t *shmem;
-	shmem = (shop_t *) mmap(0,size,PROT_READ|PROT_WRITE,MAP_SHARED,*shm_id,0);
+	shmem = (shop_t *) mmap(0,SHARED_MEM_SIZE,PROT_READ|PROT_WRITE,MAP_SHARED,*shm_id,0);
 	return shmem;
 }
 
@@ -142,10 +151,16 @@ balcao_t join_shmemory(const char *shname, shop_t* shop)
 
 	thisBalcao.abertura = curr_time;
 	thisBalcao.duracao = (time_t)-1;
+	pthread_mutex_t mt = PTHREAD_MUTEX_INITIALIZER;
+	thisBalcao.balcao_mutex = mt;
 	sprintf(thisBalcao.fifo_name, "fb_%d", pid);
 	char path[strlen(thisBalcao.fifo_name) + 1 + strlen(FIFO_DIR)];
 	strcpy(path, FIFO_DIR);
 	strcat(path, thisBalcao.fifo_name);
+	//thisBalcao.fifo_name = path;
+	//strcpy(thisBalcao.fifo_name, path);
+
+	printf("==> MyFifo: %s\n", thisBalcao.fifo_name);
 
 	if(mkfifo(path, BALCAO_FIFO_MODE) != 0)
 	{
@@ -164,13 +179,13 @@ balcao_t join_shmemory(const char *shname, shop_t* shop)
 	}
 
 	int num_balcoes = shop->num_balcoes;
+	thisBalcao.num = num_balcoes + 1;
 	shop->balcoes[num_balcoes] = thisBalcao;
 	shop->num_balcoes++;
 	shop->num_balcoes_abertos++;
 
 	pthread_mutex_unlock(&shop->loja_mutex);
 
-	thisBalcao.num = num_balcoes + 1;
 	ownIndex = num_balcoes;
 
 	if (write_log_entry(shname, BALCAO, thisBalcao.num, "cria_linh_mempart", thisBalcao.fifo_name))
@@ -243,6 +258,7 @@ void *timer_countdown(void *arg)
 void *attend_client(void *arg)
 {
 	char *cl_fifo = ((attend_thr_info*)arg)->cl_fifo;
+	printf("Cl fifo [%s]\n", cl_fifo);
 	int duration = ((attend_thr_info*)arg)->duration;
 
 	sleep(duration);
@@ -252,7 +268,9 @@ void *attend_client(void *arg)
 	if(cl_fifo_fd > 0)
 	{
 		char *message = ATTEND_END_MESSAGE;
-		write(cl_fifo_fd, message, strlen(message));
+		int r;
+		if((r = write(cl_fifo_fd, message, strlen(message))) != strlen(message))
+			printf("Error: different bytes written(%d)\n", r);
 		close(cl_fifo_fd);
 	}
 

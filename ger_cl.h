@@ -29,8 +29,16 @@ int parent_action();
 /*
  * @return exit status for the child process (client)
  */
-int child_action(char *shname);
+int child_action(char *shname, int key);
 
 int retrieve_shop(shop_t *shop, int *key, char* shm_name);
+
+char *get_fifo_pathname(int pid);
+
+shop_t *child_remap_shmem(char* shmem_name, int key);
+
+int attempt_mutex_lock(pthread_mutex_t *mutex, char *name);
+
+int attempt_mutex_unlock(pthread_mutex_t *mutex, char *name);
 
 #endif
