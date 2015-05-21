@@ -167,8 +167,12 @@ int child_action(char *shname, int key)
 
 		if(attempt_mutex_unlock(&(shop->loja_mutex), "loja") != 0) return 1;
 
-		if(debug) printf("\t==> DEBUG[%s]: Writing to balcao\n", own_name);
-		balcao_fifo_fd = open(shop->balcoes[min_occup_index].fifo_name, O_WRONLY);
+		char *fifo_name = shop->balcoes[min_occup_index].fifo_name;
+		char path[strlen(FIFO_DIR) + strlen(fifo_name) + 1];
+		strcpy(path, FIFO_DIR);
+		strcat(path, fifo_name);
+		if(debug) printf("\t==> DEBUG[%s]: Balcao path[%s]\n", own_name, path);
+		balcao_fifo_fd = open(path, O_WRONLY);
 
 		if(balcao_fifo_fd < 0)
 		{
@@ -204,6 +208,8 @@ int child_action(char *shname, int key)
 		}
 
 		if(attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao") != 0) return 1;
+
+		close(balcao_fifo_fd);
 	}
 	else
 	{

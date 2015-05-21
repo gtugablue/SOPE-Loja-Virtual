@@ -23,6 +23,8 @@
 
 #define MAX_NUM_BALCOES 30
 
+#define FIFO_DIR "/tmp/"
+
 typedef struct Balcao_t
 {
 	// Synchronizing variables

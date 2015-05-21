@@ -1,8 +1,6 @@
 #include "balcao.h"
 #include "log.h"
 
-#define FIFO_DIR "/tmp/"
-
 int ownIndex;
 
 int main(int argc, char *argv[])
@@ -15,6 +13,11 @@ int main(int argc, char *argv[])
 	{
 		printf("\n\t%s: Invalid number of arguments.\n\tMust be: %s <shared_memory_name> <opening_time>\n\n", argv[0], argv[0]);
 		return 1;
+	}
+
+	if(strcmp("-c", argv[1]) == 0) {
+		shm_unlink(argv[2]);
+		return 0;
 	}
 
 	int opening_duration = 0;
@@ -70,6 +73,7 @@ int main(int argc, char *argv[])
 	while(curr_count > 0)
 	{
 		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN);
+		if(str_size <= 0 || message[0] != '\\') continue;
 
 		thr_arg = malloc(MAX_FIFO_NAME_LEN+1);
 		message[str_size] = '\0';
@@ -153,14 +157,16 @@ balcao_t join_shmemory(const char *shname, shop_t* shop)
 	char path[strlen(thisBalcao.fifo_name) + 1 + strlen(FIFO_DIR)];
 	strcpy(path, FIFO_DIR);
 	strcat(path, thisBalcao.fifo_name);
+	//thisBalcao.fifo_name = path;
+	//strcpy(thisBalcao.fifo_name, path);
+
+	printf("==> MyFifo: %s\n", thisBalcao.fifo_name);
 
 	if(mkfifo(path, BALCAO_FIFO_MODE) != 0)
 	{
 		printf("Error: unable to create FIFO %s\n", thisBalcao.fifo_name);
 		return thisBalcao;
 	}
-
-	// TODO add fifo path to balcao
 
 	thisBalcao.clientes_em_atendimento = 0;
 	thisBalcao.clientes_atendidos = 0;
@@ -252,6 +258,7 @@ void *timer_countdown(void *arg)
 void *attend_client(void *arg)
 {
 	char *cl_fifo = ((attend_thr_info*)arg)->cl_fifo;
+	printf("Cl fifo [%s]\n", cl_fifo);
 	int duration = ((attend_thr_info*)arg)->duration;
 
 	sleep(duration);
@@ -261,7 +268,9 @@ void *attend_client(void *arg)
 	if(cl_fifo_fd > 0)
 	{
 		char *message = ATTEND_END_MESSAGE;
-		write(cl_fifo_fd, message, strlen(message));
+		int r;
+		if((r = write(cl_fifo_fd, message, strlen(message))) != strlen(message))
+			printf("Error: different bytes written(%d)\n", r);
 		close(cl_fifo_fd);
 	}
 
