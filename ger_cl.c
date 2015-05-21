@@ -233,13 +233,11 @@ int child_action(char *shname, int key)
 #endif
 		while(1)
 		{
-			printf("Reading...\n");
 			read(fifo_read, balcao_message, MAX_FIFO_NAME_LEN);
-			printf("Read succesfully: %s\n", balcao_message);
 
 			if(strcmp(balcao_message, ATTEND_END_MESSAGE) == 0)
 			{
-				if (write_log_entry(shname, CLIENT, min_occup_index + 1, "fim_atendimento", getpid())) // TODO change fifo name
+				if (write_log_entry(shname, CLIENT, min_occup_index + 1, "fim_atendimento", fifo_pathname)) // TODO change fifo name
 				{
 					printf("Warning: could not write to logfile.\n");
 				}
