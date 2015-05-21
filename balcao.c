@@ -253,6 +253,7 @@ void *timer_countdown(void *arg)
 		}
 		sleep(0.1);
 	}
+	printf("Countdown end\n");
 
 	info->shop->balcoes[ownIndex].duracao = time(NULL) - info->shop->balcoes[ownIndex].abertura; // TODO mutex
 	close(fifo_write);

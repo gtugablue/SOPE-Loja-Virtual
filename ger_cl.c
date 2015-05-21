@@ -8,7 +8,6 @@ char *own_name;
 
 int main(int argc, char **argv)
 {
-	printf("derpando\n");
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////// Check if arguments are valid and initialize variables /////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////
@@ -135,33 +134,17 @@ int child_action(char *shname, int key)
 		return 1;
 	}
 
-	int fifo_read = open(fifo_pathname, O_RDONLY | O_NONBLOCK);
-	int fifo_write = open(fifo_pathname, O_WRONLY);
-#ifndef NDEBUG
-	printf("\t==> DEBUG[%s]: Created fifo write(%d) read(%d)\n", own_name, fifo_write, fifo_read);
-#endif
-	if(fifo_read < 0 || fifo_write < 0)
-	{
-		printf("Error: unable to open client FIFO for reading.\n");
-		return 1;
-	}
-#ifndef NDEBUG
-	printf("\t==> DEBUG[%s]: FIFO opening successful\n", own_name);
-#endif
-
-	char balcao_message[MAX_FIFO_NAME_LEN];
-
 	int min_occup = INT_MAX;
 	size_t min_occup_index = -1;
 	size_t i;
 	int balcao_fifo_fd = -1;
 
 #ifndef NDEBUG
-		printf("\t==> DEBUG[%s]: First loja lock\n", own_name);
+	printf("\t==> DEBUG[%s]: First loja lock\n", own_name);
 #endif
 
 	if(attempt_mutex_lock(&(shop->loja_mutex), "loja") != 0) return 1;
-
+	printf("3\n");
 #ifndef NDEBUG
 	printf("\t==> DEBUG[%s]: Accessing loja\n", own_name);
 #endif
@@ -170,7 +153,9 @@ int child_action(char *shname, int key)
 
 	if(num_balcoes > 0)
 	{
-		if(debug) printf("\t==> DEBUG[%s]: Choosing balcao\n", own_name);
+#ifndef NDEBUG
+		printf("\t==> DEBUG[%s]: Choosing balcao\n", own_name);
+#endif
 		for(i = 0; i < num_balcoes; i++)
 		{
 			printf("balcao[%d][%d], %d clientes\n", (int)i, shop->balcoes[i].num, shop->balcoes[i].clientes_em_atendimento);
@@ -181,7 +166,9 @@ int child_action(char *shname, int key)
 			}
 		}
 
-		if(debug) printf("\t==> DEBUG[%s]: Chosen balcao %d\n", own_name, shop->balcoes[min_occup_index].num);
+#ifndef NDEBUG
+		printf("\t==> DEBUG[%s]: Chosen balcao %d\n", own_name, shop->balcoes[min_occup_index].num);
+#endif
 
 		if(attempt_mutex_lock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao") != 0)
 		{
@@ -195,7 +182,9 @@ int child_action(char *shname, int key)
 		char path[strlen(FIFO_DIR) + strlen(fifo_name) + 1];
 		strcpy(path, FIFO_DIR);
 		strcat(path, fifo_name);
-		if(debug) printf("\t==> DEBUG[%s]: Balcao path[%s]\n", own_name, path);
+#ifndef NDEBUG
+		printf("\t==> DEBUG[%s]: Balcao path[%s]\n", own_name, path);
+#endif
 		balcao_fifo_fd = open(path, O_WRONLY);
 
 		if(balcao_fifo_fd < 0)
@@ -221,11 +210,32 @@ int child_action(char *shname, int key)
 		{
 			printf("Warning: could not write to logfile.\n");
 		}
+		printf("aaa\n");
+		int fifo_read = open(fifo_pathname, O_RDONLY);
+		printf("bbb\n");
 
-		if(debug) printf("\t==> DEBUG[%s]: Read from balcao\n", own_name);
+#ifndef NDEBUG
+		printf("\t==> DEBUG[%s]: Created fifo read(%d)\n", own_name, fifo_read);
+#endif
+		if(fifo_read < 0)
+		{
+			printf("Error: unable to open client FIFO for reading.\n");
+			return 1;
+		}
+#ifndef NDEBUG
+		printf("\t==> DEBUG[%s]: FIFO opening successful\n", own_name);
+#endif
+
+		char balcao_message[MAX_FIFO_NAME_LEN];
+
+#ifndef NDEBUG
+		printf("\t==> DEBUG[%s]: Read from balcao\n", own_name);
+#endif
 		while(1)
 		{
+			printf("Reading...\n");
 			read(fifo_read, balcao_message, MAX_FIFO_NAME_LEN);
+			printf("Read succesfully: %s\n", balcao_message);
 
 			if(strcmp(balcao_message, ATTEND_END_MESSAGE) == 0)
 				break;
@@ -234,6 +244,13 @@ int child_action(char *shname, int key)
 		if(attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao") != 0) return 1;
 
 		close(balcao_fifo_fd);
+
+		close(fifo_read);
+		if(unlink(fifo_pathname) != 0) {
+			printf("Error: unable to unlink client FIFO.\n");
+			return 1;
+		}
+		free(fifo_pathname);
 	}
 	else
 	{
@@ -244,15 +261,9 @@ int child_action(char *shname, int key)
 		return 1;
 	}
 
-	if(debug) printf("\t==> DEBUG[%s]: Finishing well\n", own_name);
-
-	close(fifo_read);
-	close(fifo_write);
-	if(unlink(fifo_pathname) != 0) {
-		printf("Error: unable to unlink client FIFO.\n");
-		return 1;
-	}
-	free(fifo_pathname);
+#ifndef NDEBUG
+	printf("\t==> DEBUG[%s]: Finishing well\n", own_name);
+#endif
 	return 0;
 }
 
