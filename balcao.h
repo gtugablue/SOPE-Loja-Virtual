@@ -19,7 +19,7 @@
 #define ATTEND_END_MESSAGE "fim_atendimento"
 
 #define MAX_FIFO_NAME_LEN 20
-#define BALCAO_FIFO_MODE 0600
+#define BALCAO_FIFO_MODE 0777
 
 #define MAX_NUM_BALCOES 30
 

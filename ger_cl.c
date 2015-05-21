@@ -198,6 +198,8 @@ int child_action(char *shname, int key)
 		if(debug) printf("\t==> DEBUG[%s]: Balcao path[%s]\n", own_name, path);
 		balcao_fifo_fd = open(path, O_WRONLY);
 
+		if(debug) printf("\t==> DEBUG[%s]: Opened FIFO %s on fd %d\n", own_name, path, balcao_fifo_fd);
+
 		if(balcao_fifo_fd < 0)
 		{
 			printf("Error: unable to open \"balcao\" FIFO.\n");
@@ -206,6 +208,8 @@ int child_action(char *shname, int key)
 			attempt_mutex_unlock(&(shop->loja_mutex), "loja");
 			return 1;
 		}
+
+		if(debug) printf("\t==> DEBUG[%s]: Writing [%s] on fd %d\n", own_name, fifo_pathname, balcao_fifo_fd);
 
 		if(write(balcao_fifo_fd, fifo_pathname, fifo_pathname_len) != fifo_pathname_len)
 		{
@@ -225,11 +229,16 @@ int child_action(char *shname, int key)
 		if(debug) printf("\t==> DEBUG[%s]: Read from balcao\n", own_name);
 		while(1)
 		{
-			read(fifo_read, balcao_message, MAX_FIFO_NAME_LEN);
+			int bytes_read = read(fifo_read, balcao_message, MAX_FIFO_NAME_LEN);
+			if(bytes_read <= 0) continue;
+
+			printf("Read [%s]\n", balcao_message);
 
 			if(strcmp(balcao_message, ATTEND_END_MESSAGE) == 0)
 				break;
 		}
+
+		if(debug) printf("\t==> DEBUG[%s]: Done\n", own_name);
 
 		if(attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao") != 0) return 1;
 

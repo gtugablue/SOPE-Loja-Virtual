@@ -64,16 +64,21 @@ int main(int argc, char *argv[])
 	///////////////// Thread deployment ///////////////////
 	///////////////////////////////////////////////////////
 
+	write(fifo_write, "hello", strlen("hello"));
+
 	counter_thr_info info;
 	info.curr_count = &curr_count;
 	info.fifo_write_fd = &fifo_write;
 	info.shop = shop;
 
+	printf("\t==> Starting while\n");
 	pthread_create(&counterThread, NULL, timer_countdown, &info);
 	while(curr_count > 0)
 	{
 		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN);
 		if(str_size <= 0 || message[0] != '\\') continue;
+		printf("\t==> Read message %s\n", message);
+		continue;
 
 		thr_arg = malloc(MAX_FIFO_NAME_LEN+1);
 		message[str_size] = '\0';
@@ -261,9 +266,12 @@ void *attend_client(void *arg)
 	printf("Cl fifo [%s]\n", cl_fifo);
 	int duration = ((attend_thr_info*)arg)->duration;
 
+	printf("\t==> Attending client %s for %d seconds\n", cl_fifo, duration);
+
 	sleep(duration);
 
 	int cl_fifo_fd = open(cl_fifo, O_WRONLY);
+	printf("\t==> FIFO fd [%d]\n", cl_fifo_fd);
 
 	if(cl_fifo_fd > 0)
 	{
