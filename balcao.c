@@ -65,23 +65,28 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	attend_thr_info *cl_info;
+
 	while(curr_count > 0)
 	{
 		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN); // TODO read until '\0'
-		if(str_size <= 0 || message[0] != '/') continue;
+		if(str_size <= 0) continue;
+		printf("Message received: %s\n", message);
 
 		thr_arg = malloc(MAX_FIFO_NAME_LEN+1); // TODO check for errors and free
 		message[str_size] = '\0';
 		strcpy(thr_arg, message);
-		attend_thr_info cl_info;
-		cl_info.cl_fifo = thr_arg;
-		cl_info.shname = argv[1];
+
+		cl_info = malloc(sizeof(attend_thr_info));
+		cl_info->cl_fifo = thr_arg;
+		cl_info->shname = argv[1];
 		// TODO mutex?
 		int duration = shop->balcoes[ownIndex].clientes_em_atendimento + 1;
 		if(duration > 10) duration = 10;
-		cl_info.duration = duration;
-		pthread_create(&attendThread, NULL, attend_client, &cl_info);
-		char *cl_fifo_name = filenameFromPath(cl_info.cl_fifo);
+		cl_info->duration = duration;
+		pthread_create(&attendThread, NULL, attend_client, cl_info);
+
+		char *cl_fifo_name = filenameFromPath(cl_info->cl_fifo);
 		if (write_log_entry(argv[1], BALCAO, 1, "inicia_atend_cli", cl_fifo_name))
 		{
 			printf("Error writting to log.\n");
@@ -90,7 +95,8 @@ int main(int argc, char *argv[])
 		free(cl_fifo_name);
 	}
 
-	//return 0;
+	printf("==> Terminating balcao\n");
+
 	return terminate_balcao(argv[1], shop);
 }
 
@@ -175,11 +181,7 @@ balcao_t join_shmemory(const char *shname, shop_t* shop)
 	thisBalcao.clientes_atendidos = 0;
 	thisBalcao.atendimento_medio = 0;
 
-	if(pthread_mutex_lock(&shop->loja_mutex) != 0)
-	{
-		printf("Error: unable to lock \"loja\" mutex.\n");
-		return thisBalcao;
-	}
+	if(attempt_mutex_lock(&(shop->loja_mutex), "loja") != 0) return thisBalcao;
 
 	int num_balcoes = shop->num_balcoes;
 	thisBalcao.num = num_balcoes + 1;
@@ -187,7 +189,7 @@ balcao_t join_shmemory(const char *shname, shop_t* shop)
 	shop->num_balcoes++;
 	shop->num_balcoes_abertos++;
 
-	pthread_mutex_unlock(&shop->loja_mutex);
+	attempt_mutex_unlock(&(shop->loja_mutex), "loja");
 
 	ownIndex = num_balcoes;
 
@@ -202,13 +204,13 @@ balcao_t join_shmemory(const char *shname, shop_t* shop)
 
 int terminate_balcao(char* shmem, shop_t *shop)
 {
-	pthread_mutex_lock(&shop->loja_mutex);
+	attempt_mutex_lock(&(shop->loja_mutex), "loja");
 	--shop->num_balcoes_abertos;
 
 	if(shop->num_balcoes_abertos == 0)	// this is the last balcao active
 	{
-		pthread_mutex_unlock(&shop->loja_mutex);
-		pthread_mutex_destroy(&shop->loja_mutex);
+		attempt_mutex_unlock(&(shop->loja_mutex), "loja");
+		attempt_mutex_destroy(&(shop->loja_mutex), "loja");
 
 		char path[strlen(FIFO_DIR) + strlen(shop->balcoes[ownIndex].fifo_name) + 1];
 		strcpy(path, FIFO_DIR);
@@ -230,7 +232,7 @@ int terminate_balcao(char* shmem, shop_t *shop)
 	}
 	else
 	{
-		pthread_mutex_unlock(&shop->loja_mutex);
+		attempt_mutex_unlock(&(shop->loja_mutex), "loja");
 	}
 
 	return 0;
@@ -262,7 +264,9 @@ void *attend_client(void *arg)
 	char *cl_fifo = ((attend_thr_info*)arg)->cl_fifo;
 	int duration = ((attend_thr_info*)arg)->duration;
 	sleep(duration);
+	printf("Opening fifo %s\n", cl_fifo);
 	int cl_fifo_fd = open(cl_fifo, O_WRONLY);
+	printf("Opened fifo %s\n", cl_fifo);
 	if(cl_fifo_fd > 0)
 	{
 		char *cl_fifo_name = filenameFromPath(cl_fifo);
@@ -272,11 +276,15 @@ void *attend_client(void *arg)
 		}
 		free(cl_fifo_name);
 		int r;
+		printf("==> Writing [%s] to [%s]\n", ATTEND_END_MESSAGE, cl_fifo);
 		if((r = write(cl_fifo_fd, ATTEND_END_MESSAGE, strlen(ATTEND_END_MESSAGE) + 1)) != strlen(ATTEND_END_MESSAGE) + 1)
 			printf("Error: different bytes written(%d)\n", r);
 		close(cl_fifo_fd);
 	}
+	else
+		printf("==> Unable to open client fifo [%s]\n", cl_fifo);
 
-	//free((attend_thr_info*)arg);
+	free(((attend_thr_info*)arg)->cl_fifo);
+	free((attend_thr_info*)arg);
 	return NULL;
 }

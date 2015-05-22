@@ -37,8 +37,4 @@ char *get_fifo_pathname(int pid);
 
 shop_t *child_remap_shmem(char* shmem_name, int key);
 
-int attempt_mutex_lock(pthread_mutex_t *mutex, char *name);
-
-int attempt_mutex_unlock(pthread_mutex_t *mutex, char *name);
-
 #endif
