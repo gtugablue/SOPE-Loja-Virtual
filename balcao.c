@@ -81,11 +81,13 @@ int main(int argc, char *argv[])
 		if(duration > 10) duration = 10;
 		cl_info.duration = duration;
 		pthread_create(&attendThread, NULL, attend_client, &cl_info);
-		if (write_log_entry(argv[1], BALCAO, 1, "inicia_atend_cli", cl_info.cl_fifo))
+		char *cl_fifo_name = filenameFromPath(cl_info.cl_fifo);
+		if (write_log_entry(argv[1], BALCAO, 1, "inicia_atend_cli", cl_fifo_name))
 		{
 			printf("Error writting to log.\n");
 			return 1;
 		}
+		free(cl_fifo_name);
 	}
 
 	//return 0;
@@ -263,10 +265,12 @@ void *attend_client(void *arg)
 	int cl_fifo_fd = open(cl_fifo, O_WRONLY);
 	if(cl_fifo_fd > 0)
 	{
-		if (write_log_entry(((attend_thr_info*)arg)->shname, BALCAO, 1, "fim_atend_cli", cl_fifo))
+		char *cl_fifo_name = filenameFromPath(cl_fifo);
+		if (write_log_entry(((attend_thr_info*)arg)->shname, BALCAO, 1, "fim_atend_cli", cl_fifo_name))
 		{
 			return NULL;
 		}
+		free(cl_fifo_name);
 		int r;
 		if((r = write(cl_fifo_fd, ATTEND_END_MESSAGE, strlen(ATTEND_END_MESSAGE) + 1)) != strlen(ATTEND_END_MESSAGE) + 1)
 			printf("Error: different bytes written(%d)\n", r);

@@ -25,3 +25,24 @@ int parse_long(long* dest, char* str, int base)
 
 	return 0;
 }
+
+char *filenameFromPath(char* path)
+{
+	int size = strlen(path);
+	char *result = malloc(size + 1);
+
+	size_t i = 0;
+	size_t curr_index = 0;
+	for(; i < size; i++)
+	{
+		if(path[i] == '/')
+		{
+			curr_index = 0;
+			continue;
+		}
+
+		result[curr_index++] = path[i];
+	}
+	result[curr_index] = '\0';
+	return result;
+}

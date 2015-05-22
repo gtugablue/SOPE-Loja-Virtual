@@ -238,10 +238,12 @@ int child_action(char *shname, int key)
 
 			if(strcmp(balcao_message, ATTEND_END_MESSAGE) == 0)
 			{
-				if (write_log_entry(shname, CLIENT, min_occup_index + 1, "fim_atendimento", fifo_pathname)) // TODO change fifo name
+				char *fifo_name = filenameFromPath(fifo_pathname);
+				if (write_log_entry(shname, CLIENT, min_occup_index + 1, "fim_atendimento", fifo_name))
 				{
 					printf("Warning: could not write to logfile.\n");
 				}
+				free(fifo_name);
 				break;
 			}
 		}
