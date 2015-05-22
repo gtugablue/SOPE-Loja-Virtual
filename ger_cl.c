@@ -17,6 +17,7 @@ int main(int argc, char **argv)
 #endif
 
 	own_name = argv[0];
+
 	int i;
 	int non_optional = 0;
 	char *non_opt_args[argc-1];
@@ -144,7 +145,6 @@ int child_action(char *shname, int key)
 #endif
 
 	if(attempt_mutex_lock(&(shop->loja_mutex), "loja") != 0) return 1;
-	printf("3\n");
 #ifndef NDEBUG
 	printf("\t==> DEBUG[%s]: Accessing loja\n", own_name);
 #endif
@@ -210,12 +210,13 @@ int child_action(char *shname, int key)
 		{
 			printf("Warning: could not write to logfile.\n");
 		}
-		printf("aaa\n");
+
+		if(attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao") != 0) return 1;
+
 		int fifo_read = open(fifo_pathname, O_RDONLY);
-		printf("bbb\n");
 
 #ifndef NDEBUG
-		printf("\t==> DEBUG[%s]: Created fifo read(%d)\n", own_name, fifo_read);
+		printf("\t==> DEBUG[%s]: Created fifo read(%d, %s)\n", own_name, fifo_read, path);
 #endif
 		if(fifo_read < 0)
 		{
@@ -244,8 +245,6 @@ int child_action(char *shname, int key)
 				break;
 			}
 		}
-
-		if(attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao") != 0) return 1;
 
 		close(balcao_fifo_fd);
 
@@ -311,16 +310,19 @@ shop_t *child_remap_shmem(char* shmem_name, int key)
 
 int attempt_mutex_lock(pthread_mutex_t *mutex, char *name)
 {
+	printf("Locking mutex 0x%X\n", (unsigned int)mutex);
 	if(pthread_mutex_lock(mutex) != 0)
 	{
 		printf("Error: unable to lock \"%s\" mutex.\n", name);
 		return 1;
 	}
+	printf("Locked mutex 0x%X\n", (unsigned int)mutex);
 	return 0;
 }
 
 int attempt_mutex_unlock(pthread_mutex_t *mutex, char *name)
 {
+	printf("Unlocking mutex 0x%X\n", (unsigned int)mutex);
 	if(pthread_mutex_unlock(mutex) != 0)
 	{
 		printf("Error: unable to unlock \"%s\" mutex.\n", name);
