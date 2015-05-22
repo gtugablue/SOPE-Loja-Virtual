@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 		attend_thr_info cl_info;
 		cl_info.cl_fifo = thr_arg;
 		cl_info.shname = argv[1];
-		shop->balcoes[ownIndex].clientes_em_atendimento++; // TODO mutex?
+		// TODO mutex?
 		int duration = shop->balcoes[ownIndex].clientes_em_atendimento + 1;
 		if(duration > 10) duration = 10;
 		cl_info.duration = duration;
