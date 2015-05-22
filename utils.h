@@ -16,10 +16,10 @@
 
 int parse_int(int* dest, char* str, int base);	// returns 0 if str is a number, 1 otherwise
 int parse_long(long* dest, char* str, int base);	// returns 0 if str is a number, 1 otherwise
-char *filenameFromPath(char* path);
+char *filenameFromPath(const char* path);
 
-int attempt_mutex_lock(pthread_mutex_t *mutex, char *name);
-int attempt_mutex_unlock(pthread_mutex_t *mutex, char *name);
-int attempt_mutex_destroy(pthread_mutex_t *mutex, char *name);
+int attempt_mutex_lock(pthread_mutex_t *mutex, char *name, int debug);
+int attempt_mutex_unlock(pthread_mutex_t *mutex, char *name, int debug);
+int attempt_mutex_destroy(pthread_mutex_t *mutex, char *name, int debug);
 
 #endif

@@ -26,7 +26,7 @@ int parse_long(long* dest, char* str, int base)
 	return 0;
 }
 
-char *filenameFromPath(char* path)
+char *filenameFromPath(const char* path)
 {
 	int size = strlen(path);
 	char *result = malloc(size + 1);
@@ -47,41 +47,41 @@ char *filenameFromPath(char* path)
 	return result;
 }
 
-int attempt_mutex_lock(pthread_mutex_t *mutex, char *name)
+int attempt_mutex_lock(pthread_mutex_t *mutex, char *name, int debug)
 {
-	/*printf("Locking mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());
+	/*if(debug) printf("Locking mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());
 	if(pthread_mutex_lock(mutex) != 0)
 	{
-		//printf("Error: unable to lock \"%s\" mutex.\n", name);
-		printf("Error: unable to lock \"%s\" mutex.\n", name);
+		//if(debug) printf("Error: unable to lock \"%s\" mutex.\n", name);
+		if(debug) printf("Error: unable to lock \"%s\" mutex.\n", name);
 		return 1;
 	}
-	printf("Locked mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());*/
+	if(debug) printf("Locked mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());*/
 	return 0;
 }
 
-int attempt_mutex_unlock(pthread_mutex_t *mutex, char *name)
+int attempt_mutex_unlock(pthread_mutex_t *mutex, char *name, int debug)
 {
-	/*printf("Unlocking mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());
+	/*if(debug) printf("Unlocking mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());
 	if(pthread_mutex_unlock(mutex) != 0)
 	{
-		//printf("Error: unable to unlock \"%s\" mutex.\n", name);
-		printf("Error: unable to unlock \"%s\" mutex.\n", name);
+		//if(debug) printf("Error: unable to unlock \"%s\" mutex.\n", name);
+		if(debug) printf("Error: unable to unlock \"%s\" mutex.\n", name);
 		return 1;
 	}
-	printf("Unlocked mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());*/
+	if(debug) printf("Unlocked mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());*/
 	return 0;
 }
 
-int attempt_mutex_destroy(pthread_mutex_t *mutex, char *name)
+int attempt_mutex_destroy(pthread_mutex_t *mutex, char *name, int debug)
 {
-	printf("Destroying mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());
+	if(debug) printf("Destroying mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());
 	if(pthread_mutex_destroy(mutex) != 0)
 	{
-		//printf("Error: unable to destroy \"%s\" mutex.\n", name);
-		printf("Error: unable to destroy \"%s\" mutex.\n", name);
+		//if(debug) printf("Error: unable to destroy \"%s\" mutex.\n", name);
+		if(debug) printf("Error: unable to destroy \"%s\" mutex.\n", name);
 		return 1;
 	}
-	printf("Destroyed mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());
+	if(debug) printf("Destroyed mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());
 	return 0;
 }

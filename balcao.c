@@ -3,26 +3,47 @@
 
 int ownIndex;
 
+char *own_name;
+int debug;
+
 int main(int argc, char *argv[])
 {
 	///////////////////////////////////////////////////////
 	/////////////// Argument verification /////////////////
 	///////////////////////////////////////////////////////
 
-	if(argc != 3)
+	own_name = argv[0];
+
+	int i;
+	int non_optional = 0;
+	char *non_opt_args[argc-1];
+
+	for (i = 1; i < argc; i++)
 	{
-		printf("\n\t%s: Invalid number of arguments.\n\tMust be: %s <shared_memory_name> <opening_time>\n\n", argv[0], argv[0]);
+		if (strcmp(argv[i], "-db") == 0)  /* Process optional arguments. */
+			debug = 1;
+		else
+			non_opt_args[non_optional++] = argv[i];
+	}
+
+	if(debug) printf("\t==> DEBUG[%s - %d]: Starting balcao\n", own_name, getpid());
+	if(debug) printf("\t==> DEBUG[%s - %d]: Verifying arguments\n", own_name, getpid());
+
+	if(non_optional != 2)
+	{
+		printf("\n\t%s: Invalid number of arguments.\n\tMust be: %s <shared_memory_name> <opening_time>\n\t         %s -c <sh-mem name to clean>\n\t \"-db\" to debug\n\n", argv[0], argv[0], argv[0]);
 		return 1;
 	}
 
-	if(strcmp("-c", argv[1]) == 0) {
-		shm_unlink(argv[2]);
+	if(strcmp("-c", non_opt_args[0]) == 0) {
+		shm_unlink(non_opt_args[1]);
+		printf("\n\t%s: Cleaned shared memory \"%s\"\n\n", argv[0], non_opt_args[1]);
 		return 0;
 	}
 
 	int opening_duration = 0;
 
-	if(parse_int(&opening_duration, argv[2], 10) != 0 || opening_duration <= 0)
+	if(parse_int(&opening_duration, non_opt_args[1], 10) != 0 || opening_duration <= 0)
 	{
 		printf("\n\t%s - ERROR: Invalid opening time. Must be a number greater than zero\n\n", argv[0]);
 		return 1;
@@ -32,14 +53,22 @@ int main(int argc, char *argv[])
 	/////////////// Shop and balcao init //////////////////
 	///////////////////////////////////////////////////////
 
+	if(debug) printf("\t==> DEBUG[%s - %d]: Initializing shop and balcao\n", own_name, getpid());
+
 	int shm_id = -1;
 	shop_t *shop = NULL;
-	shop = (shop_t *)create_shared_memory(argv[1], &shm_id);
+	shop = (shop_t *)create_shared_memory(non_opt_args[0], &shm_id);
 	if (shop == NULL) return 1;
 
-	balcao_t balcao = join_shmemory(argv[1], shop);
+	balcao_t balcao = join_shmemory(non_opt_args[0], shop);
 
 	if(balcao.num == -1) return 1;
+
+	///////////////////////////////////////////////////////
+	//////////////// Preparing threads ////////////////////
+	///////////////////////////////////////////////////////
+
+	if(debug) printf("\t==> DEBUG[%s - %d]: Preparing for threads\n", own_name, getpid());
 
 	pthread_t counterThread, attendThread;
 	int curr_count = opening_duration;
@@ -57,7 +86,11 @@ int main(int argc, char *argv[])
 	info.curr_count = &curr_count;
 	info.path = path;
 	info.shop = shop;
+
+	if(debug) printf("\t==> DEBUG[%s - %d]: Launching countdown thread\n", own_name, getpid());
 	pthread_create(&counterThread, NULL, timer_countdown, &info);
+
+	if(debug) printf("\t==> DEBUG[%s - %d]: Opening FIFO %s\n", own_name, getpid(), path);
 	int fifo_fd = open(path, O_RDONLY);
 	if(fifo_fd <= 0)
 	{
@@ -67,11 +100,13 @@ int main(int argc, char *argv[])
 
 	attend_thr_info *cl_info;
 
+	if(debug) printf("\t==> DEBUG[%s - %d]: Starting read cycle\n", own_name, getpid());
+
 	while(curr_count > 0)
 	{
 		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN); // TODO read until '\0'
 		if(str_size <= 0) continue;
-		printf("Message received: %s\n", message);
+		printf("\t==> Client FIFO read: %s\n", message);
 
 		thr_arg = malloc(MAX_FIFO_NAME_LEN+1); // TODO check for errors and free
 		message[str_size] = '\0';
@@ -79,25 +114,23 @@ int main(int argc, char *argv[])
 
 		cl_info = malloc(sizeof(attend_thr_info));
 		cl_info->cl_fifo = thr_arg;
-		cl_info->shname = argv[1];
+		cl_info->shname = non_opt_args[0];
 		// TODO mutex?
 		int duration = shop->balcoes[ownIndex].clientes_em_atendimento + 1;
 		if(duration > 10) duration = 10;
 		cl_info->duration = duration;
 		pthread_create(&attendThread, NULL, attend_client, cl_info);
 
-		char *cl_fifo_name = filenameFromPath(cl_info->cl_fifo);
-		if (write_log_entry(argv[1], BALCAO, 1, "inicia_atend_cli", cl_fifo_name))
+		if (write_log_entry(argv[1], BALCAO, 1, "inicia_atend_cli", cl_info->cl_fifo))
 		{
 			printf("Error writting to log.\n");
 			return 1;
 		}
-		free(cl_fifo_name);
 	}
 
-	printf("==> Terminating balcao\n");
+	if(debug) printf("\t==> DEBUG[%s - %d]: Terminating balcao\n", own_name, getpid());
 
-	return terminate_balcao(argv[1], shop);
+	return terminate_balcao(non_opt_args[0], shop);
 }
 
 shop_t *create_shared_memory(const char *name, int *shm_id)
@@ -181,7 +214,7 @@ balcao_t join_shmemory(const char *shname, shop_t* shop)
 	thisBalcao.clientes_atendidos = 0;
 	thisBalcao.atendimento_medio = 0;
 
-	if(attempt_mutex_lock(&(shop->loja_mutex), "loja") != 0) return thisBalcao;
+	if(attempt_mutex_lock(&(shop->loja_mutex), "loja", debug) != 0) return thisBalcao;
 
 	int num_balcoes = shop->num_balcoes;
 	thisBalcao.num = num_balcoes + 1;
@@ -189,7 +222,7 @@ balcao_t join_shmemory(const char *shname, shop_t* shop)
 	shop->num_balcoes++;
 	shop->num_balcoes_abertos++;
 
-	attempt_mutex_unlock(&(shop->loja_mutex), "loja");
+	attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
 
 	ownIndex = num_balcoes;
 
@@ -204,13 +237,13 @@ balcao_t join_shmemory(const char *shname, shop_t* shop)
 
 int terminate_balcao(char* shmem, shop_t *shop)
 {
-	attempt_mutex_lock(&(shop->loja_mutex), "loja");
+	attempt_mutex_lock(&(shop->loja_mutex), "loja", debug);
 	--shop->num_balcoes_abertos;
 
 	if(shop->num_balcoes_abertos == 0)	// this is the last balcao active
 	{
-		attempt_mutex_unlock(&(shop->loja_mutex), "loja");
-		attempt_mutex_destroy(&(shop->loja_mutex), "loja");
+		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
+		attempt_mutex_destroy(&(shop->loja_mutex), "loja", debug);
 
 		char path[strlen(FIFO_DIR) + strlen(shop->balcoes[ownIndex].fifo_name) + 1];
 		strcpy(path, FIFO_DIR);
@@ -228,12 +261,14 @@ int terminate_balcao(char* shmem, shop_t *shop)
 			return 1;
 		}
 
-		printf("\nShared memory cleaned\n\n");
+		printf("\n\t==> Shared memory cleaned\n");
 	}
 	else
 	{
-		attempt_mutex_unlock(&(shop->loja_mutex), "loja");
+		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
 	}
+
+	printf("\t==> Balcao terminating\n\n");
 
 	return 0;
 }
@@ -252,7 +287,7 @@ void *timer_countdown(void *arg)
 	sleep(*count);
 	*count = 0;
 
-	printf("Countdown end\n");
+	if(debug) printf("\t==> DEBUG[%s - %d]: Countdown ended\n", own_name, getpid());
 
 	info->shop->balcoes[ownIndex].duracao = time(NULL) - info->shop->balcoes[ownIndex].abertura; // TODO mutex
 	close(fifo_write);
@@ -261,28 +296,32 @@ void *timer_countdown(void *arg)
 
 void *attend_client(void *arg)
 {
+	if(debug) printf("\t==> DEBUG[%s - %d]: Attending client with FIFO %s\n", own_name, getpid(), ((attend_thr_info*)arg)->cl_fifo);
+
 	char *cl_fifo = ((attend_thr_info*)arg)->cl_fifo;
 	int duration = ((attend_thr_info*)arg)->duration;
 	sleep(duration);
-	printf("Opening fifo %s\n", cl_fifo);
+
+	if(debug) printf("\t==> DEBUG[%s - %d]: Opening FIFO %s\n", own_name, getpid(), cl_fifo);
 	int cl_fifo_fd = open(cl_fifo, O_WRONLY);
-	printf("Opened fifo %s\n", cl_fifo);
+	if(debug) printf("\t==> DEBUG[%s - %d]: Opened FIFO %s\n", own_name, getpid(), cl_fifo);
+
 	if(cl_fifo_fd > 0)
 	{
-		char *cl_fifo_name = filenameFromPath(cl_fifo);
-		if (write_log_entry(((attend_thr_info*)arg)->shname, BALCAO, 1, "fim_atend_cli", cl_fifo_name))
+		if (write_log_entry(((attend_thr_info*)arg)->shname, BALCAO, 1, "fim_atend_cli", cl_fifo))
 		{
 			return NULL;
 		}
-		free(cl_fifo_name);
+
+		if(debug) printf("\t==> DEBUG[%s - %d]: Writing \"%s\" to \"%s\"\n", own_name, getpid(), ATTEND_END_MESSAGE, cl_fifo);
+
 		int r;
-		printf("==> Writing [%s] to [%s]\n", ATTEND_END_MESSAGE, cl_fifo);
 		if((r = write(cl_fifo_fd, ATTEND_END_MESSAGE, strlen(ATTEND_END_MESSAGE) + 1)) != strlen(ATTEND_END_MESSAGE) + 1)
 			printf("Error: different bytes written(%d)\n", r);
 		close(cl_fifo_fd);
 	}
 	else
-		printf("==> Unable to open client fifo [%s]\n", cl_fifo);
+		printf("\t==> ERROR: Unable to open client fifo [%s]\n", cl_fifo);
 
 	free(((attend_thr_info*)arg)->cl_fifo);
 	free((attend_thr_info*)arg);

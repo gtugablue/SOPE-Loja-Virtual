@@ -1,6 +1,12 @@
 #ifndef LOG_H
 #define LOG_H
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
+#include "utils.h"
+
 typedef enum
 {
 	BALCAO,

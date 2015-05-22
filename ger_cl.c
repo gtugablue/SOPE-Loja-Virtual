@@ -1,8 +1,6 @@
 #include "ger_cl.h"
 #include "log.h"
 
-//#define NDEBUG
-
 int debug;
 char *own_name;
 
@@ -11,10 +9,6 @@ int main(int argc, char **argv)
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////// Check if arguments are valid and initialize variables /////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////
-
-#ifndef NDEBUG
-	printf("\t==> DEBUG[%s - %d]: Starting ger_cl\n", argv[0], getpid());
-#endif
 
 	own_name = argv[0];
 
@@ -30,9 +24,9 @@ int main(int argc, char **argv)
 			non_opt_args[non_optional++] = argv[i];
 	}
 
-#ifndef NDEBUG
-	printf("\t==> DEBUG[%s - %d]: Verifying arguments\n", argv[0], getpid());
-#endif
+	if(debug) printf("\t==> DEBUG[%s - %d]: Starting ger_cl\n", argv[0], getpid());
+
+	if(debug) printf("\t==> DEBUG[%s - %d]: Verifying arguments\n", argv[0], getpid());
 
 	if(non_optional != 2)
 	{
@@ -60,9 +54,7 @@ int main(int argc, char **argv)
 	/////////////////////////////// Initialize child processes /////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifndef NDEBUG
-	printf("\t==> DEBUG[%s - %d]: Creating child processes\n", argv[0], getpid());
-#endif
+	if(debug) printf("\t==> DEBUG[%s - %d]: Creating child processes\n", argv[0], getpid());
 
 	int temp = 0;
 	int fork_return = 0;
@@ -94,9 +86,8 @@ int main(int argc, char **argv)
 
 int parent_action()
 {
-#ifndef NDEBUG
-	printf("\t==> DEBUG[%s - %d]: Parent working\n", own_name, getpid());
-#endif
+	if(debug) printf("\t==> DEBUG[%s - %d]: Parent working\n", own_name, getpid());
+
 
 	int child_status = 0;
 
@@ -121,21 +112,17 @@ int child_action(char *shname, int key)
 	shop_t *shop = child_remap_shmem(shname, key);
 	if(shop == NULL) return 1;
 
-#ifndef NDEBUG
-	printf("\t==> DEBUG[%s - %d]: Child working\n", own_name, getpid());
-#endif
+	if(debug) printf("\t==> DEBUG[%s - %d]: Child working\n", own_name, getpid());
 
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////// Create FIFO ///////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
 	char* fifo_pathname = get_fifo_pathname(getpid());
-	int fifo_pathname_len = strlen(fifo_pathname);
-	fifo_pathname[fifo_pathname_len++] = '\0';
+	//int fifo_pathname_len = strlen(fifo_pathname);
+	//fifo_pathname[fifo_pathname_len++] = '\0';
 
-#ifndef NDEBUG
-	printf("\t==> DEBUG[%s - %d]: Constructed fifo_pathname \"%s\"\n", own_name, getpid(), fifo_pathname);
-#endif
+	if(debug) printf("\t==> DEBUG[%s - %d]: Constructed fifo_pathname \"%s\"\n", own_name, getpid(), fifo_pathname);
 
 	if(mkfifo(fifo_pathname, CL_FIFO_MODE) != 0)
 	{
@@ -148,18 +135,15 @@ int child_action(char *shname, int key)
 	size_t i;
 	int balcao_fifo_fd = -1;
 
-#ifndef NDEBUG
-	printf("\t==> DEBUG[%s - %d]: First loja lock\n", own_name, getpid());
-#endif
+	if(debug) printf("\t==> DEBUG[%s - %d]: First loja lock\n", own_name, getpid());
 
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////// Lock loja mutex ////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
-	if(attempt_mutex_lock(&(shop->loja_mutex), "loja") != 0) return 1;
-#ifndef NDEBUG
-	printf("\t==> DEBUG[%s - %d]: Accessing loja\n", own_name, getpid());
-#endif
+	if(attempt_mutex_lock(&(shop->loja_mutex), "loja", debug) != 0) return 1;
+
+	if(debug) printf("\t==> DEBUG[%s - %d]: Accessing loja\n", own_name, getpid());
 
 	size_t num_balcoes = shop->num_balcoes;
 
@@ -170,12 +154,10 @@ int child_action(char *shname, int key)
 		//////////////////////////// Choose the balcao with less clients ///////////////////////////////
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifndef NDEBUG
-		printf("\t==> DEBUG[%s - %d]: Choosing balcao\n", own_name, getpid());
-#endif
+		if(debug) printf("\t==> DEBUG[%s - %d]: Choosing balcao\n", own_name, getpid());
+
 		for(i = 0; i < num_balcoes; i++)
 		{
-			printf("balcao[%d][%d], %d clientes\n", (int)i, shop->balcoes[i].num, shop->balcoes[i].clientes_em_atendimento);
 			if((shop->balcoes[i].duracao == -1) && (shop->balcoes[i].clientes_em_atendimento < min_occup))
 			{
 				min_occup = shop->balcoes[i].clientes_em_atendimento;
@@ -183,17 +165,15 @@ int child_action(char *shname, int key)
 			}
 		}
 
-#ifndef NDEBUG
-		printf("\t==> DEBUG[%s - %d]: Chosen balcao %d\n", own_name, getpid(), shop->balcoes[min_occup_index].num);
-#endif
+		if(debug) printf("\t==> DEBUG[%s - %d]: Chosen balcao %d\n", own_name, getpid(), shop->balcoes[min_occup_index].num);
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
 		///////////////////////////////// Lock the balcao for access ///////////////////////////////////
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
-		if(attempt_mutex_lock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao") != 0)
+		if(attempt_mutex_lock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao", debug) != 0)
 		{
-			attempt_mutex_unlock(&(shop->loja_mutex), "loja");
+			attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
 			return 1;
 		}
 
@@ -203,7 +183,7 @@ int child_action(char *shname, int key)
 		//////////////////////////////////// Unlock loja mutex /////////////////////////////////////////
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
-		if(attempt_mutex_unlock(&(shop->loja_mutex), "loja") != 0) return 1;
+		if(attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug) != 0) return 1;
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
 		//////////////////////////////////// Write to balcao FIFO //////////////////////////////////////
@@ -213,17 +193,17 @@ int child_action(char *shname, int key)
 		char path[strlen(FIFO_DIR) + strlen(fifo_name) + 1];
 		strcpy(path, FIFO_DIR);
 		strcat(path, fifo_name);
-#ifndef NDEBUG
-		printf("\t==> DEBUG[%s - %d]: Balcao path[%s]\n", own_name, getpid(), path);
-#endif
+
+		if(debug) printf("\t==> DEBUG[%s - %d]: Balcao path[%s]\n", own_name, getpid(), path);
+
 		balcao_fifo_fd = open(path, O_WRONLY);
 		printf("Successfully opened FIFO for writting.\n");
 		if(balcao_fifo_fd < 0)
 		{
 			printf("Error: unable to open \"balcao\" FIFO.\n");
 
-			attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao");
-			attempt_mutex_unlock(&(shop->loja_mutex), "loja");
+			attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao", debug);
+			attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
 			return 1;
 		}
 
@@ -231,8 +211,8 @@ int child_action(char *shname, int key)
 		{
 			printf("Error: problems writing to \"balcao\" FIFO.\n");
 
-			attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao");
-			attempt_mutex_unlock(&(shop->loja_mutex), "balcao");
+			attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao", debug);
+			attempt_mutex_unlock(&(shop->loja_mutex), "balcao", debug);
 
 			return 1;
 		}
@@ -246,7 +226,7 @@ int child_action(char *shname, int key)
 		////////////////////////////////// Unlock balcao mutex /////////////////////////////////////////
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
-		if(attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao") != 0) return 1;
+		if(attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao", debug) != 0) return 1;
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
 		///////////////////////////////// Wait for end of attendance ///////////////////////////////////
@@ -254,35 +234,30 @@ int child_action(char *shname, int key)
 
 		int fifo_read = open(fifo_pathname, O_RDONLY);
 
-#ifndef NDEBUG
-		printf("\t==> DEBUG[%s - %d]: Created fifo read(%d, %s)\n", own_name, getpid(), fifo_read, path);
-#endif
+		if(debug) printf("\t==> DEBUG[%s - %d]: Created fifo read(%d, %s)\n", own_name, getpid(), fifo_read, path);
+
 		if(fifo_read < 0)
 		{
 			printf("Error: unable to open client FIFO for reading.\n");
 			return 1;
 		}
-#ifndef NDEBUG
-		printf("\t==> DEBUG[%s - %d]: FIFO opening successful\n", own_name, getpid());
-#endif
+
+		if(debug) printf("\t==> DEBUG[%s - %d]: FIFO opening successful\n", own_name, getpid());
 
 		char balcao_message[MAX_FIFO_NAME_LEN];
 
-#ifndef NDEBUG
-		printf("\t==> DEBUG[%s - %d]: Read from balcao\n", own_name, getpid());
-#endif
+		if(debug) printf("\t==> DEBUG[%s - %d]: Read from balcao\n", own_name, getpid());
+
 		while(1)
 		{
 			read(fifo_read, balcao_message, MAX_FIFO_NAME_LEN);
 
 			if(strcmp(balcao_message, ATTEND_END_MESSAGE) == 0)
 			{
-				char *fifo_name = filenameFromPath(fifo_pathname);
-				if (write_log_entry(shname, CLIENT, min_occup_index + 1, "fim_atendimento", fifo_name))
+				if (write_log_entry(shname, CLIENT, min_occup_index + 1, "fim_atendimento", fifo_pathname))
 				{
 					printf("Warning: could not write to logfile.\n");
 				}
-				free(fifo_name);
 				break;
 			}
 		}
@@ -298,16 +273,15 @@ int child_action(char *shname, int key)
 	}
 	else
 	{
-		if(attempt_mutex_unlock(&(shop->loja_mutex), "loja") != 0)
+		if(attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug) != 0)
 			printf("Error: unable to unlock \"loja\" mutex.\n");
 
 		printf("Error: the specified shop has no valid balcons.\n");
 		return 1;
 	}
 
-#ifndef NDEBUG
-	printf("\t==> DEBUG[%s - %d]: Finishing well\n", own_name, getpid());
-#endif
+	if(debug) printf("\t==> DEBUG[%s - %d]: Finishing well\n", own_name, getpid());
+
 	return 0;
 }
 

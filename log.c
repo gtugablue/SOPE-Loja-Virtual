@@ -1,8 +1,4 @@
 #include "log.h"
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
 
 #define EXTENSION ".log"
 
@@ -45,7 +41,9 @@ int write_log_entry(const char *sh_name, t_log_who who, unsigned balcaoID, const
 
 	FILE *fp = fopen(file_name, "a");
 	if (fp == NULL) return 1;
-	if (fprintf(fp, "%-19s | %-6s | %-7d | %-22s | %-18s\n", date, get_creator_name(who), balcaoID, what, channel_created_used) < 0) return 1;
+	char *channel_created_used_name = filenameFromPath(channel_created_used);
+	if (fprintf(fp, "%-19s | %-6s | %-7d | %-22s | %-18s\n", date, get_creator_name(who), balcaoID, what, channel_created_used_name) < 0) return 1;
+	free(channel_created_used_name);
 	if (fclose(fp) != 0) return 1;
 
 	return 0;
