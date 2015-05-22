@@ -57,11 +57,8 @@ int main(int argc, char *argv[])
 	info.curr_count = &curr_count;
 	info.path = path;
 	info.shop = shop;
-	printf("debug1\n");
 	pthread_create(&counterThread, NULL, timer_countdown, &info);
-	printf("debug2\n");
 	int fifo_fd = open(path, O_RDONLY);
-	printf("debug3\n");
 	if(fifo_fd <= 0)
 	{
 		printf("Error: could not open fifo.\n");
@@ -246,19 +243,11 @@ void *timer_countdown(void *arg)
 		printf("Error: could not open fifo.\n");
 		return NULL;
 	}
+
 	int *count = info->curr_count;
-	time_t start_time = time(NULL);
-	time_t curr_time;
-	while(1)
-	{
-		curr_time = time(NULL);
-		if(curr_time-start_time >= *count)
-		{
-			*count = 0;
-			break;
-		}
-		sleep(0.1);
-	}
+	sleep(*count);
+	*count = 0;
+
 	printf("Countdown end\n");
 
 	info->shop->balcoes[ownIndex].duracao = time(NULL) - info->shop->balcoes[ownIndex].abertura; // TODO mutex
@@ -274,17 +263,13 @@ void *attend_client(void *arg)
 	int cl_fifo_fd = open(cl_fifo, O_WRONLY);
 	if(cl_fifo_fd > 0)
 	{
+		if (write_log_entry(((attend_thr_info*)arg)->shname, BALCAO, 1, "fim_atend_cli", cl_fifo))
+		{
+			return NULL;
+		}
 		int r;
 		if((r = write(cl_fifo_fd, ATTEND_END_MESSAGE, strlen(ATTEND_END_MESSAGE) + 1)) != strlen(ATTEND_END_MESSAGE) + 1)
 			printf("Error: different bytes written(%d)\n", r);
-		else
-		{
-			if (write_log_entry(((attend_thr_info*)arg)->shname, BALCAO, 1, "fim_atend_cl", cl_fifo))
-			{
-				return NULL;
-			}
-
-		}
 		close(cl_fifo_fd);
 	}
 
