@@ -315,6 +315,7 @@ int attempt_mutex_lock(pthread_mutex_t *mutex, char *name)
 	printf("Locking mutex 0x%X\n", (unsigned int)mutex);
 	if(pthread_mutex_lock(mutex) != 0)
 	{
+		//printf("Error: unable to lock \"%s\" mutex.\n", name);
 		printf("Error: unable to lock \"%s\" mutex.\n", name);
 		return 1;
 	}
@@ -327,6 +328,7 @@ int attempt_mutex_unlock(pthread_mutex_t *mutex, char *name)
 	printf("Unlocking mutex 0x%X\n", (unsigned int)mutex);
 	if(pthread_mutex_unlock(mutex) != 0)
 	{
+		//printf("Error: unable to unlock \"%s\" mutex.\n", name);
 		printf("Error: unable to unlock \"%s\" mutex.\n", name);
 		return 1;
 	}
