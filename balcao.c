@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 
 	while(curr_count > 0)
 	{
-		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN);
+		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN); // TODO read until '\0'
 		if(str_size <= 0 || message[0] != '/') continue;
 
 		thr_arg = malloc(MAX_FIFO_NAME_LEN+1); // TODO check for errors and free
