@@ -37,7 +37,7 @@ typedef struct Balcao_t
 	char fifo_name[MAX_FIFO_NAME_LEN];
 	int clientes_em_atendimento;
 	int clientes_atendidos;
-	long atendimento_medio;
+	double atendimento_medio;
 } balcao_t;
 
 typedef struct
@@ -63,8 +63,10 @@ typedef struct {
 
 typedef struct {
 	int duration;
+	time_t start_time;
 	char *cl_fifo;
 	const char *shname;
+	shop_t *shop;
 } attend_thr_info;
 
 int main(int argc, char *argv[]);
@@ -78,5 +80,8 @@ int initialize_log(const char *sh_name);
 
 int read_fifo(int fifo_fd, char** non_opt_args, shop_t *shop);
 void initialize_shop_st(shop_t *shop);
+int update_statistics(shop_t *shop, time_t time_diff);
+int countdown_end(shop_t * shop, time_t time_diff);
+void display_balcao_statistics(shop_t *shop);
 
 #endif

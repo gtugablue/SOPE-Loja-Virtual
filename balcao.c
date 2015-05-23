@@ -2,8 +2,8 @@
 #include "log.h"
 
 int ownIndex;
-
-char *own_name;
+int ownPid;
+char *ownName;
 int debug;
 
 int main(int argc, char *argv[])
@@ -12,7 +12,8 @@ int main(int argc, char *argv[])
 	/////////////// Argument verification /////////////////
 	///////////////////////////////////////////////////////
 
-	own_name = argv[0];
+	ownName = argv[0];
+	ownPid = getpid();
 
 	int i;
 	int non_optional = 0;
@@ -26,8 +27,8 @@ int main(int argc, char *argv[])
 			non_opt_args[non_optional++] = argv[i];
 	}
 
-	if(debug) printf("\t==> DEBUG[%s - %d]: Starting balcao\n", own_name, getpid());
-	if(debug) printf("\t==> DEBUG[%s - %d]: Verifying arguments\n", own_name, getpid());
+	if(debug) printf("\t==> DEBUG[%s - %d]: Starting balcao\n", ownName, ownPid);
+	if(debug) printf("\t==> DEBUG[%s - %d]: Verifying arguments\n", ownName, ownPid);
 
 	if(non_optional != 2)
 	{
@@ -57,7 +58,7 @@ int main(int argc, char *argv[])
 	//////////////// Preparing threads ////////////////////
 	///////////////////////////////////////////////////////
 
-	if(debug) printf("\t==> DEBUG[%s - %d]: Preparing for threads\n", own_name, getpid());
+	if(debug) printf("\t==> DEBUG[%s - %d]: Preparing for threads\n", ownName, ownPid);
 
 	pthread_t counterThread;
 	int curr_count = opening_duration;
@@ -70,10 +71,10 @@ int main(int argc, char *argv[])
 	info.curr_count = &curr_count;
 	info.path = path;
 	info.shop = shop;
-	if(debug) printf("\t==> DEBUG[%s - %d]: Launching countdown thread\n", own_name, getpid());
+	if(debug) printf("\t==> DEBUG[%s - %d]: Launching countdown thread\n", ownName, ownPid);
 	pthread_create(&counterThread, NULL, timer_countdown, &info);
 
-	if(debug) printf("\t==> DEBUG[%s - %d]: Opening FIFO %s\n", own_name, getpid(), path);
+	if(debug) printf("\t==> DEBUG[%s - %d]: Opening FIFO %s\n", ownName, ownPid, path);
 	int fifo_fd = open(path, O_RDONLY);
 	if(fifo_fd <= 0)
 	{
@@ -82,18 +83,18 @@ int main(int argc, char *argv[])
 	}
 
 
-	if(debug) printf("\t==> DEBUG[%s - %d]: Starting read cycle\n", own_name, getpid());
+	if(debug) printf("\t==> DEBUG[%s - %d]: Starting read cycle\n", ownName, ownPid);
 
 	if(read_fifo(fifo_fd, non_opt_args, shop)) return 1;
 
-	if(debug) printf("\t==> DEBUG[%s - %d]: Terminating balcao\n", own_name, getpid());
+	if(debug) printf("\t==> DEBUG[%s - %d]: Terminating balcao\n", ownName, ownPid);
 
 	return terminate_balcao(non_opt_args[0], shop);
 }
 
 int init(const char *shname, shop_t **shop, int *shm_id)
 {
-	if(debug) printf("\t==> DEBUG[%s - %d]: Initializing shop and balcao\n", own_name, getpid());
+	if(debug) printf("\t==> DEBUG[%s - %d]: Initializing shop and balcao\n", ownName, ownPid);
 
 	*shop = create_shared_memory(shname, shm_id);
 	if (*shop == NULL) return 1;
@@ -154,7 +155,7 @@ int join_shmemory(const char *shname, shop_t **shop)
 	balcao_t thisBalcao; thisBalcao.num = -1;
 
 	time_t curr_time = time(NULL);
-	int pid = getpid();
+	int pid = ownPid;
 
 	thisBalcao.abertura = curr_time;
 	thisBalcao.duracao = (time_t)-1;
@@ -210,6 +211,8 @@ int terminate_balcao(char* shmem, shop_t *shop)
 	attempt_mutex_lock(&(shop->loja_mutex), "loja", debug);
 	--shop->num_balcoes_abertos;
 
+	display_balcao_statistics(shop);
+
 	if(shop->num_balcoes_abertos == 0)	// this is the last balcao active
 	{
 		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
@@ -257,24 +260,25 @@ void *timer_countdown(void *arg)
 	sleep(*count);
 	*count = 0;
 
-	if(debug) printf("\t==> DEBUG[%s - %d]: Countdown ended\n", own_name, getpid());
+	if(debug) printf("\t==> DEBUG[%s - %d]: Countdown ended\n", ownName, ownPid);
 
-	info->shop->balcoes[ownIndex].duracao = time(NULL) - info->shop->balcoes[ownIndex].abertura; // TODO mutex
+	countdown_end(info->shop, info->shop->balcoes[ownIndex].duracao = time(NULL) - info->shop->balcoes[ownIndex].abertura);
+
 	close(fifo_write);
 	return NULL;
 }
 
 void *attend_client(void *arg)
 {
-	if(debug) printf("\t==> DEBUG[%s - %d]: Attending client with FIFO %s\n", own_name, getpid(), ((attend_thr_info*)arg)->cl_fifo);
+	if(debug) printf("\t==> DEBUG[%s - %d]: Attending client with FIFO %s\n", ownName, ownPid, ((attend_thr_info*)arg)->cl_fifo);
 
 	char *cl_fifo = ((attend_thr_info*)arg)->cl_fifo;
 	int duration = ((attend_thr_info*)arg)->duration;
 	sleep(duration);
 
-	if(debug) printf("\t==> DEBUG[%s - %d]: Opening FIFO %s\n", own_name, getpid(), cl_fifo);
+	if(debug) printf("\t==> DEBUG[%s - %d]: Opening FIFO %s\n", ownName, ownPid, cl_fifo);
 	int cl_fifo_fd = open(cl_fifo, O_WRONLY);
-	if(debug) printf("\t==> DEBUG[%s - %d]: Opened FIFO %s\n", own_name, getpid(), cl_fifo);
+	if(debug) printf("\t==> DEBUG[%s - %d]: Opened FIFO %s\n", ownName, ownPid, cl_fifo);
 
 	if(cl_fifo_fd > 0)
 	{
@@ -283,12 +287,14 @@ void *attend_client(void *arg)
 			return NULL;
 		}
 
-		if(debug) printf("\t==> DEBUG[%s - %d]: Writing \"%s\" to \"%s\"\n", own_name, getpid(), ATTEND_END_MESSAGE, cl_fifo);
+		if(debug) printf("\t==> DEBUG[%s - %d]: Writing \"%s\" to \"%s\"\n", ownName, ownPid, ATTEND_END_MESSAGE, cl_fifo);
 
 		int r;
 		if((r = write(cl_fifo_fd, ATTEND_END_MESSAGE, strlen(ATTEND_END_MESSAGE) + 1)) != strlen(ATTEND_END_MESSAGE) + 1)
 			printf("Error: different bytes written(%d)\n", r);
 		close(cl_fifo_fd);
+
+		update_statistics(((attend_thr_info*)arg)->shop, time(NULL)-((attend_thr_info*)arg)->start_time);
 	}
 	else
 		printf("\t==> ERROR: Unable to open client fifo [%s]\n", cl_fifo);
@@ -298,14 +304,40 @@ void *attend_client(void *arg)
 	return NULL;
 }
 
+int update_statistics(shop_t *shop, time_t time_diff)
+{
+	if(attempt_mutex_lock(&(shop->loja_mutex), "loja", debug) != 0) return 1;
+	if(attempt_mutex_lock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug) != 0)
+	{
+		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
+		return 1;
+	}
+
+	double new_avg = (shop->balcoes[ownIndex].atendimento_medio*shop->balcoes[ownIndex].clientes_atendidos + time_diff)/(shop->balcoes[ownIndex].clientes_atendidos + 1);
+	shop->balcoes[ownIndex].clientes_atendidos++;
+	shop->balcoes[ownIndex].atendimento_medio = new_avg;
+
+	int prev_duration = shop->balcoes[ownIndex].duracao;
+	if(prev_duration != -1)
+	{
+		int new_duration = (int)(time(NULL) - shop->balcoes[ownIndex].abertura);
+		if(prev_duration < new_duration)
+			shop->balcoes[ownIndex].duracao = new_duration;
+	}
+
+	return attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug) + attempt_mutex_unlock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug);
+}
+
 int read_fifo(int fifo_fd, char** non_opt_args, shop_t *shop)
 {
 	// Initialize auxiliar variables
+	pthread_t attendThread;
 	int str_size = 0;
+	char *thr_arg;
+
 	do
 	{
 		char message[MAX_FIFO_NAME_LEN+1];
-		char *thr_arg;
 		attend_thr_info *cl_info;
 
 		// Start reading
@@ -314,8 +346,6 @@ int read_fifo(int fifo_fd, char** non_opt_args, shop_t *shop)
 		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN);
 		if(str_size <= 0) return 0;
 		printf("\t==> Client FIFO read: %s, %d chars read.\n", message, str_size);
-
-		pthread_t attendThread;
 
 		thr_arg = malloc(MAX_FIFO_NAME_LEN+1); // TODO check for errors and free
 		message[str_size] = '\0';
@@ -328,6 +358,8 @@ int read_fifo(int fifo_fd, char** non_opt_args, shop_t *shop)
 		int duration = shop->balcoes[ownIndex].clientes_em_atendimento + 1;
 		if(duration > 10) duration = 10;
 		cl_info->duration = duration;
+		cl_info->start_time = time(NULL);
+		cl_info->shop = shop;
 		pthread_create(&attendThread, NULL, attend_client, cl_info);
 
 		if (write_log_entry(non_opt_args[0], BALCAO, 1, "inicia_atend_cli", cl_info->cl_fifo))
@@ -352,4 +384,31 @@ void initialize_shop_st(shop_t *shop)
 	pthread_mutexattr_init(&mattr); /* inicializa variável de atributos */
 	pthread_mutexattr_setpshared(&mattr, PTHREAD_PROCESS_SHARED);
 	pthread_mutex_init(&shop->loja_mutex, &mattr);
+}
+
+int countdown_end(shop_t * shop, time_t time_diff)
+{
+	if(attempt_mutex_lock(&(shop->loja_mutex), "loja", debug) != 0) return 1;
+	if(attempt_mutex_lock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug) != 0)
+	{
+		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
+		return 1;
+	}
+
+	shop->balcoes[ownIndex].duracao = time_diff;
+
+	return attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug) + attempt_mutex_unlock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug);
+}
+
+void display_balcao_statistics(shop_t *shop)
+{
+	if(shop->balcoes[ownIndex].clientes_em_atendimento > 0)
+		printf("\tWARNING: balcao %d didn't finnish attending all clients\n", shop->balcoes[ownIndex].num);
+
+	printf("\n\n  Balcao %d (PID %d) has closed and finished the attendance of all clients\n"
+			"   => Opened on time %d from Epoch\n"
+			"   => Duration of %d seconds\n"
+			"   => %d clients attended\n"
+			"   => Average attendance time of %f seconds\n\n", shop->balcoes[ownIndex].num, ownPid, (int)shop->balcoes[ownIndex].abertura, (int)shop->balcoes[ownIndex].duracao,
+			shop->balcoes[ownIndex].clientes_atendidos, shop->balcoes[ownIndex].atendimento_medio);
 }
