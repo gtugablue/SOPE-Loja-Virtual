@@ -50,9 +50,12 @@ char *filenameFromPath(const char* path)
 int attempt_mutex_lock(pthread_mutex_t *mutex, char *name, int debug)
 {
 	if(debug) printf("Locking mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());
+	/*while (pthread_mutex_trylock(mutex) != 0)
+	{
+
+	}*/
 	if(pthread_mutex_lock(mutex) != 0)
 	{
-		//if(debug) printf("Error: unable to lock \"%s\" mutex.\n", name);
 		if(debug) printf("Error: unable to lock \"%s\" mutex.\n", name);
 		return 1;
 	}

@@ -188,6 +188,11 @@ int join_shmemory(const char *shname, shop_t **shop)
 	(*shop)->num_balcoes++;
 	(*shop)->num_balcoes_abertos++;
 
+	pthread_mutexattr_t mattr;
+	pthread_mutexattr_init(&mattr); /* inicializa variável de atributos */
+	pthread_mutexattr_setpshared(&mattr, PTHREAD_PROCESS_SHARED);
+	pthread_mutex_init(&(*shop)->balcoes[num_balcoes].balcao_mutex, &mattr);
+
 	attempt_mutex_unlock(&((*shop)->loja_mutex), "loja", debug);
 
 	ownIndex = num_balcoes;
@@ -340,6 +345,12 @@ void initialize_shop_st(shop_t *shop)
 {
 	shop->opening_time = time(NULL);
 	pthread_mutex_t mt = PTHREAD_MUTEX_INITIALIZER;	// had to do this to solve compilation error
+
 	shop->loja_mutex = mt;
 	shop->num_balcoes = 0;
+
+	pthread_mutexattr_t mattr;
+	pthread_mutexattr_init(&mattr); /* inicializa variável de atributos */
+	pthread_mutexattr_setpshared(&mattr, PTHREAD_PROCESS_SHARED);
+	pthread_mutex_init(&shop->loja_mutex, &mattr);
 }
