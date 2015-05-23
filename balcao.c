@@ -63,7 +63,6 @@ int main(int argc, char *argv[])
 	int curr_count = opening_duration;
 
 	char *fifo_name = shop->balcoes[ownIndex].fifo_name;
-	printf("fifo_name: %s\n", fifo_name);
 	char path[strlen(FIFO_DIR) + strlen(fifo_name) + 1];
 	strcpy(path, FIFO_DIR);
 	strcat(path, fifo_name);
@@ -168,7 +167,7 @@ int join_shmemory(const char *shname, shop_t **shop)
 	//thisBalcao.fifo_name = path;
 	//strcpy(thisBalcao.fifo_name, path);
 
-	printf("==> MyFifo: %s\n", thisBalcao.fifo_name);
+	printf("\t==> Balcao with fifo \"%s\" initialized\n", thisBalcao.fifo_name);
 
 	if(mkfifo(path, BALCAO_FIFO_MODE) != 0)
 	{
@@ -310,7 +309,7 @@ int read_fifo(int fifo_fd, char** non_opt_args, shop_t *shop)
 		attend_thr_info *cl_info;
 
 		// Start reading
-		printf("Blocking on read...\n");
+		printf("Waiting for possible clients...\n");
 
 		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN);
 		if(str_size <= 0) return 0;
