@@ -59,22 +59,18 @@ int main(int argc, char *argv[])
 
 	if(debug) printf("\t==> DEBUG[%s - %d]: Preparing for threads\n", own_name, getpid());
 
-	pthread_t counterThread, attendThread;
+	pthread_t counterThread;
 	int curr_count = opening_duration;
 
 	char *fifo_name = shop->balcoes[ownIndex].fifo_name;
-	printf("teste2\n");
 	printf("fifo_name: %s\n", fifo_name);
 	char path[strlen(FIFO_DIR) + strlen(fifo_name) + 1];
-	printf("teste2.5\n");
 	strcpy(path, FIFO_DIR);
 	strcat(path, fifo_name);
-	printf("teste3\n");
 	counter_thr_info info;
 	info.curr_count = &curr_count;
 	info.path = path;
 	info.shop = shop;
-	printf("teste4\n");
 	if(debug) printf("\t==> DEBUG[%s - %d]: Launching countdown thread\n", own_name, getpid());
 	pthread_create(&counterThread, NULL, timer_countdown, &info);
 
@@ -89,10 +85,7 @@ int main(int argc, char *argv[])
 
 	if(debug) printf("\t==> DEBUG[%s - %d]: Starting read cycle\n", own_name, getpid());
 
-	while(curr_count > 0)
-	{
-		if(lock_on_fifo_action(fifo_fd, non_opt_args, shop, &attendThread)) return 1;
-	}
+	if(read_fifo(fifo_fd, non_opt_args, shop)) return 1;
 
 	if(debug) printf("\t==> DEBUG[%s - %d]: Terminating balcao\n", own_name, getpid());
 
@@ -301,39 +294,45 @@ void *attend_client(void *arg)
 	return NULL;
 }
 
-int lock_on_fifo_action(int fifo_fd, char** non_opt_args, shop_t *shop, pthread_t *attendThread)
+int read_fifo(int fifo_fd, char** non_opt_args, shop_t *shop)
 {
 	// Initialize auxiliar variables
 	int str_size = 0;
-	char message[MAX_FIFO_NAME_LEN+1];
-	char *thr_arg;
-	attend_thr_info *cl_info;
-
-	// Start reading
-	printf("Blocking on read...\n");
-
-	str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN);
-	if(str_size <= 0) return 0;
-	printf("\t==> Client FIFO read: %s, %d chars read.\n", message, str_size);
-
-	thr_arg = malloc(MAX_FIFO_NAME_LEN+1); // TODO check for errors and free
-	message[str_size] = '\0';
-	strcpy(thr_arg, message);
-
-	cl_info = malloc(sizeof(attend_thr_info));
-	cl_info->cl_fifo = thr_arg;
-	cl_info->shname = non_opt_args[0];
-	// TODO mutex?
-	int duration = shop->balcoes[ownIndex].clientes_em_atendimento + 1;
-	if(duration > 10) duration = 10;
-	cl_info->duration = duration;
-	pthread_create(attendThread, NULL, attend_client, cl_info);
-
-	if (write_log_entry(non_opt_args[0], BALCAO, 1, "inicia_atend_cli", cl_info->cl_fifo))
+	do
 	{
-		printf("Error writting to log.\n");
-		return 1;
+		char message[MAX_FIFO_NAME_LEN+1];
+		char *thr_arg;
+		attend_thr_info *cl_info;
+
+		// Start reading
+		printf("Blocking on read...\n");
+
+		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN);
+		if(str_size <= 0) return 0;
+		printf("\t==> Client FIFO read: %s, %d chars read.\n", message, str_size);
+
+		pthread_t attendThread;
+
+		thr_arg = malloc(MAX_FIFO_NAME_LEN+1); // TODO check for errors and free
+		message[str_size] = '\0';
+		strcpy(thr_arg, message);
+
+		cl_info = malloc(sizeof(attend_thr_info));
+		cl_info->cl_fifo = thr_arg;
+		cl_info->shname = non_opt_args[0];
+		// TODO mutex?
+		int duration = shop->balcoes[ownIndex].clientes_em_atendimento + 1;
+		if(duration > 10) duration = 10;
+		cl_info->duration = duration;
+		pthread_create(&attendThread, NULL, attend_client, cl_info);
+
+		if (write_log_entry(non_opt_args[0], BALCAO, 1, "inicia_atend_cli", cl_info->cl_fifo))
+		{
+			printf("Error writting to log.\n");
+			return 1;
+		}
 	}
+	while (str_size != 0);
 	return 0;
 }
 

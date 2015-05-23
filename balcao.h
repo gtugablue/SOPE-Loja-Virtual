@@ -76,7 +76,7 @@ void *timer_countdown(void *arg);
 void *attend_client(void *arg);
 int initialize_log(const char *sh_name);
 
-int lock_on_fifo_action(int fifo_fd, char** non_opt_args, shop_t *shop, pthread_t *attendThread);
+int read_fifo(int fifo_fd, char** non_opt_args, shop_t *shop);
 void initialize_shop_st(shop_t *shop);
 
 #endif
