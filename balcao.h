@@ -68,8 +68,9 @@ typedef struct {
 } attend_thr_info;
 
 int main(int argc, char *argv[]);
+int init(const char *shname, shop_t **shop, int *shm_id);
 shop_t *create_shared_memory(const char *name, int *shm_id);
-balcao_t join_shmemory(const char *shname, shop_t* shop);
+int join_shmemory(const char *shname, shop_t **shop);
 int terminate_balcao(char* shmem, shop_t *shop);
 void *timer_countdown(void *arg);
 void *attend_client(void *arg);

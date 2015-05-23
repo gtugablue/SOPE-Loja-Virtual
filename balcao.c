@@ -53,16 +53,9 @@ int main(int argc, char *argv[])
 	/////////////// Shop and balcao init //////////////////
 	///////////////////////////////////////////////////////
 
-	if(debug) printf("\t==> DEBUG[%s - %d]: Initializing shop and balcao\n", own_name, getpid());
-
-	int shm_id = -1;
+	int shm_id;
 	shop_t *shop = NULL;
-	shop = (shop_t *)create_shared_memory(non_opt_args[0], &shm_id);
-	if (shop == NULL) return 1;
-
-	balcao_t balcao = join_shmemory(non_opt_args[0], shop);
-
-	if(balcao.num == -1) return 1;
+	if (init(non_opt_args[0], &shop, &shm_id)) return 1;
 
 	///////////////////////////////////////////////////////
 	//////////////// Preparing threads ////////////////////
@@ -78,15 +71,18 @@ int main(int argc, char *argv[])
 	int str_size = 0;
 
 	char *fifo_name = shop->balcoes[ownIndex].fifo_name;
+	printf("teste2\n");
+	printf("fifo_name: %s\n", fifo_name);
 	char path[strlen(FIFO_DIR) + strlen(fifo_name) + 1];
+	printf("teste2.5\n");
 	strcpy(path, FIFO_DIR);
 	strcat(path, fifo_name);
-
+	printf("teste3\n");
 	counter_thr_info info;
 	info.curr_count = &curr_count;
 	info.path = path;
 	info.shop = shop;
-
+	printf("teste4\n");
 	if(debug) printf("\t==> DEBUG[%s - %d]: Launching countdown thread\n", own_name, getpid());
 	pthread_create(&counterThread, NULL, timer_countdown, &info);
 
@@ -132,6 +128,18 @@ int main(int argc, char *argv[])
 	if(debug) printf("\t==> DEBUG[%s - %d]: Terminating balcao\n", own_name, getpid());
 
 	return terminate_balcao(non_opt_args[0], shop);
+}
+
+int init(const char *shname, shop_t **shop, int *shm_id)
+{
+	if(debug) printf("\t==> DEBUG[%s - %d]: Initializing shop and balcao\n", own_name, getpid());
+
+	*shop = create_shared_memory(shname, shm_id);
+	if (*shop == NULL) return 1;
+
+	if (join_shmemory(shname, shop)) return 1;
+
+	return 0;
 }
 
 shop_t *create_shared_memory(const char *name, int *shm_id)
@@ -185,7 +193,7 @@ shop_t *create_shared_memory(const char *name, int *shm_id)
 	return shmem;
 }
 
-balcao_t join_shmemory(const char *shname, shop_t* shop)
+int join_shmemory(const char *shname, shop_t **shop)
 {
 	balcao_t thisBalcao; thisBalcao.num = -1;
 
@@ -208,32 +216,32 @@ balcao_t join_shmemory(const char *shname, shop_t* shop)
 	if(mkfifo(path, BALCAO_FIFO_MODE) != 0)
 	{
 		printf("Error: unable to create FIFO %s\n", thisBalcao.fifo_name);
-		return thisBalcao;
+		return 1;
 	}
 
 	thisBalcao.clientes_em_atendimento = 0;
 	thisBalcao.clientes_atendidos = 0;
 	thisBalcao.atendimento_medio = 0;
 
-	if(attempt_mutex_lock(&(shop->loja_mutex), "loja", debug) != 0) return thisBalcao;
+	if(attempt_mutex_lock(&((*shop)->loja_mutex), "loja", debug) != 0) return 1;
 
-	int num_balcoes = shop->num_balcoes;
+	int num_balcoes = (*shop)->num_balcoes;
 	thisBalcao.num = num_balcoes + 1;
-	shop->balcoes[num_balcoes] = thisBalcao;
-	shop->num_balcoes++;
-	shop->num_balcoes_abertos++;
+	(*shop)->balcoes[num_balcoes] = thisBalcao;
+	(*shop)->num_balcoes++;
+	(*shop)->num_balcoes_abertos++;
 
-	attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
+	attempt_mutex_unlock(&((*shop)->loja_mutex), "loja", debug);
 
 	ownIndex = num_balcoes;
 
 	if (write_log_entry(shname, BALCAO, thisBalcao.num, "cria_linh_mempart", thisBalcao.fifo_name))
 	{
 		printf("Error writting to log.\n");
-		return thisBalcao;
+		return 1;
 	}
 
-	return thisBalcao;
+	return 0;
 }
 
 int terminate_balcao(char* shmem, shop_t *shop)
