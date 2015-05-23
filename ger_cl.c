@@ -89,12 +89,13 @@ int parent_action()
 
 
 	int child_status = 0;
+	int child_pid = 0;
 
-	while(wait(&child_status) >= 0)
+	while((child_pid = wait(&child_status)) >= 0)
 	{
 		if(child_status != 0)
 		{
-			printf("\n\t%s - ERROR: Unexpected child process return (value %d)\n\n", own_name, child_status);
+			printf("\n\t%s - ERROR: Unexpected child process return (value %d ; pid %d))\n\n", own_name, child_status, child_pid);
 			return child_status;
 		}
 	}
@@ -104,6 +105,8 @@ int parent_action()
 
 int child_action(char *shname, int key)
 {
+	printf("\t==> Client %d starting\n", getpid());
+
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////// Remap shared memory to revalidate pointers //////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////
@@ -185,7 +188,7 @@ int child_action(char *shname, int key)
 		if(debug) printf("\t==> DEBUG[%s - %d]: Balcao path[%s]\n", own_name, getpid(), path);
 
 		balcao_fifo_fd = open(path, O_WRONLY);
-		printf("Successfully opened FIFO for writting.\n");
+		if(debug) printf("\t==> DEBUG[%s - %d]: Successfully opened balcao FIFO %s for writting.\n", own_name, getpid(), path);
 		if(balcao_fifo_fd < 0)
 		{
 			printf("Error: unable to open \"balcao\" FIFO.\n");
@@ -270,6 +273,8 @@ int child_action(char *shname, int key)
 
 	if(debug) printf("\t==> DEBUG[%s - %d]: Finishing well\n", own_name, getpid());
 
+	printf("\t==> Client %d terminating with success\n", getpid());
+
 	return 0;
 }
 
@@ -311,15 +316,15 @@ shop_t *child_remap_shmem(char* shmem_name, int key)
 	return shop;
 }
 
-void choose_best_balcao(shop_t *shop, int num_balcoes, int *min_occup_index)
+void choose_best_balcao(shop_t *shop, const int num_balcoes, size_t *min_occup_index)
 {
 	int i;
 	int min_occup = INT_MAX;
 	for(i = 0; i < num_balcoes; i++)
 	{
-		if((shop->balcoes[i].duracao == -1) && (shop->balcoes[i].clientes_em_atendimento < *min_occup))
+		if((shop->balcoes[i].duracao == -1) && (shop->balcoes[i].clientes_em_atendimento < min_occup))
 		{
-			*min_occup = shop->balcoes[i].clientes_em_atendimento;
+			min_occup = shop->balcoes[i].clientes_em_atendimento;
 			*min_occup_index = i;
 		}
 	}

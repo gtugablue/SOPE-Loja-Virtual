@@ -37,4 +37,6 @@ char *get_fifo_pathname(int pid);
 
 shop_t *child_remap_shmem(char* shmem_name, int key);
 
+void choose_best_balcao(shop_t *shop, const int num_balcoes, size_t *min_occup_index);
+
 #endif
