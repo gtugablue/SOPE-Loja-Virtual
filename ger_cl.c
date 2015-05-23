@@ -25,7 +25,6 @@ int main(int argc, char **argv)
 	}
 
 	if(debug) printf("\t==> DEBUG[%s - %d]: Starting ger_cl\n", argv[0], getpid());
-
 	if(debug) printf("\t==> DEBUG[%s - %d]: Verifying arguments\n", argv[0], getpid());
 
 	if(non_optional != 2)
@@ -119,8 +118,6 @@ int child_action(char *shname, int key)
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
 	char* fifo_pathname = get_fifo_pathname(getpid());
-	//int fifo_pathname_len = strlen(fifo_pathname);
-	//fifo_pathname[fifo_pathname_len++] = '\0';
 
 	if(debug) printf("\t==> DEBUG[%s - %d]: Constructed fifo_pathname \"%s\"\n", own_name, getpid(), fifo_pathname);
 
@@ -129,11 +126,6 @@ int child_action(char *shname, int key)
 		printf("Error: unable to create client FIFO.\n");
 		return 1;
 	}
-
-	int min_occup = INT_MAX;
-	size_t min_occup_index = -1;
-	size_t i;
-	int balcao_fifo_fd = -1;
 
 	if(debug) printf("\t==> DEBUG[%s - %d]: First loja lock\n", own_name, getpid());
 
@@ -154,16 +146,12 @@ int child_action(char *shname, int key)
 		//////////////////////////// Choose the balcao with less clients ///////////////////////////////
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
+		size_t min_occup_index = -1;
+		int balcao_fifo_fd = -1;
+
 		if(debug) printf("\t==> DEBUG[%s - %d]: Choosing balcao\n", own_name, getpid());
 
-		for(i = 0; i < num_balcoes; i++)
-		{
-			if((shop->balcoes[i].duracao == -1) && (shop->balcoes[i].clientes_em_atendimento < min_occup))
-			{
-				min_occup = shop->balcoes[i].clientes_em_atendimento;
-				min_occup_index = i;
-			}
-		}
+		choose_best_balcao(shop, num_balcoes, &min_occup_index);
 
 		if(debug) printf("\t==> DEBUG[%s - %d]: Chosen balcao %d\n", own_name, getpid(), shop->balcoes[min_occup_index].num);
 
@@ -323,4 +311,16 @@ shop_t *child_remap_shmem(char* shmem_name, int key)
 	return shop;
 }
 
-
+void choose_best_balcao(shop_t *shop, int num_balcoes, int *min_occup_index)
+{
+	int i;
+	int min_occup = INT_MAX;
+	for(i = 0; i < num_balcoes; i++)
+	{
+		if((shop->balcoes[i].duracao == -1) && (shop->balcoes[i].clientes_em_atendimento < *min_occup))
+		{
+			*min_occup = shop->balcoes[i].clientes_em_atendimento;
+			*min_occup_index = i;
+		}
+	}
+}
