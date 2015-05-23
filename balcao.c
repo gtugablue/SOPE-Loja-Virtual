@@ -73,10 +73,6 @@ int main(int argc, char *argv[])
 	pthread_t counterThread, attendThread;
 	int curr_count = opening_duration;
 
-	char message[MAX_FIFO_NAME_LEN+1];
-	char *thr_arg;
-	int str_size = 0;
-
 	char *fifo_name = shop->balcoes[ownIndex].fifo_name;
 	char path[strlen(FIFO_DIR) + strlen(fifo_name) + 1];
 	strcpy(path, FIFO_DIR);
@@ -98,35 +94,12 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	attend_thr_info *cl_info;
 
 	if(debug) printf("\t==> DEBUG[%s - %d]: Starting read cycle\n", own_name, getpid());
 
 	while(curr_count > 0)
 	{
-		printf("Blocking on read...\n");
-		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN);
-		if(str_size <= 0) continue;
-		printf("\t==> Client FIFO read: %s, %d chars read.\n", message, str_size);
-
-		thr_arg = malloc(MAX_FIFO_NAME_LEN+1); // TODO check for errors and free
-		message[str_size] = '\0';
-		strcpy(thr_arg, message);
-
-		cl_info = malloc(sizeof(attend_thr_info));
-		cl_info->cl_fifo = thr_arg;
-		cl_info->shname = non_opt_args[0];
-		// TODO mutex?
-		int duration = shop->balcoes[ownIndex].clientes_em_atendimento + 1;
-		if(duration > 10) duration = 10;
-		cl_info->duration = duration;
-		pthread_create(&attendThread, NULL, attend_client, cl_info);
-
-		if (write_log_entry(argv[1], BALCAO, 1, "inicia_atend_cli", cl_info->cl_fifo))
-		{
-			printf("Error writting to log.\n");
-			return 1;
-		}
+		if(lock_on_fifo_action(fifo_fd, non_opt_args, shop, &attendThread)) return 1;
 	}
 
 	if(debug) printf("\t==> DEBUG[%s - %d]: Terminating balcao\n", own_name, getpid());
@@ -149,13 +122,8 @@ shop_t *create_shared_memory(const char *name, int *shm_id)
 			return NULL;
 		}
 
-		time_t time_open = time(NULL);
-
 		shop_t shop;
-		shop.opening_time = time_open;
-		pthread_mutex_t mt = PTHREAD_MUTEX_INITIALIZER;	// had to do this to solve compilation error
-		shop.loja_mutex = mt;
-		shop.num_balcoes = 0;
+		initialize_shop_st(&shop);
 
 		shop_t *shmem;
 		shmem = (shop_t *) mmap(0,SHARED_MEM_SIZE, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_SHARED, *shm_id, 0);
@@ -327,4 +295,48 @@ void *attend_client(void *arg)
 	free(((attend_thr_info*)arg)->cl_fifo);
 	free((attend_thr_info*)arg);
 	return NULL;
+}
+
+int lock_on_fifo_action(int fifo_fd, char** non_opt_args, shop_t *shop, pthread_t *attendThread)
+{
+	// Initialize auxiliar variables
+	int str_size = 0;
+	char message[MAX_FIFO_NAME_LEN+1];
+	char *thr_arg;
+	attend_thr_info *cl_info;
+
+	// Start reading
+	printf("Blocking on read...\n");
+
+	str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN);
+	if(str_size <= 0) return 0;
+	printf("\t==> Client FIFO read: %s, %d chars read.\n", message, str_size);
+
+	thr_arg = malloc(MAX_FIFO_NAME_LEN+1); // TODO check for errors and free
+	message[str_size] = '\0';
+	strcpy(thr_arg, message);
+
+	cl_info = malloc(sizeof(attend_thr_info));
+	cl_info->cl_fifo = thr_arg;
+	cl_info->shname = non_opt_args[0];
+	// TODO mutex?
+	int duration = shop->balcoes[ownIndex].clientes_em_atendimento + 1;
+	if(duration > 10) duration = 10;
+	cl_info->duration = duration;
+	pthread_create(attendThread, NULL, attend_client, cl_info);
+
+	if (write_log_entry(non_opt_args[0], BALCAO, 1, "inicia_atend_cli", cl_info->cl_fifo))
+	{
+		printf("Error writting to log.\n");
+		return 1;
+	}
+	return 0;
+}
+
+void initialize_shop_st(shop_t *shop)
+{
+	shop->opening_time = time(NULL);
+	pthread_mutex_t mt = PTHREAD_MUTEX_INITIALIZER;	// had to do this to solve compilation error
+	shop->loja_mutex = mt;
+	shop->num_balcoes = 0;
 }
