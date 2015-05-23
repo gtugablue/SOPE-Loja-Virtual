@@ -351,15 +351,26 @@ int read_fifo(int fifo_fd, char** non_opt_args, shop_t *shop)
 		if(str_size <= 0) return 0;
 		printf("\t==> Client FIFO read: %s, %d chars read.\n", message, str_size);
 
-		thr_arg = malloc(MAX_FIFO_NAME_LEN+1); // TODO check for errors and free
+		thr_arg = malloc(MAX_FIFO_NAME_LEN+1);
+		if(thr_arg == NULL)
+		{
+			printf("\tERROR: problems allocating memory for temporary string\n");
+			return 1;
+		}
 		message[str_size] = '\0';
 		strcpy(thr_arg, message);
 
 		cl_info = malloc(sizeof(attend_thr_info));
 		cl_info->cl_fifo = thr_arg;
 		cl_info->shname = non_opt_args[0];
-		// TODO mutex?
-		int duration = shop->balcoes[ownIndex].clientes_em_atendimento + 1;
+		int duration = inc_balcao_attendance(shop);
+
+		if(duration < 0)
+		{
+			printf("\tERROR: a problem occured changing the balcao attendance\n");
+			return 1;
+		}
+
 		if(duration > 10) duration = 10;
 		cl_info->duration = duration;
 		cl_info->start_time = time(NULL);
@@ -437,4 +448,23 @@ void display_loja_statistics(shop_t *shop, char* shmem)
 				"   => %d total clients attended\n"
 				"   => Average of %f clients per counter\n\n", shmem, (int)shop->opening_time, (int)(time(NULL)-shop->opening_time), num_balcoes, tempo_medio, clientes_totais,
 				(double)clientes_totais/num_balcoes);
+}
+
+int inc_balcao_attendance(shop_t *shop)
+{
+	if(attempt_mutex_lock(&(shop->loja_mutex), "loja", debug) != 0) return 1;
+	if(attempt_mutex_lock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug) != 0)
+	{
+		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
+		return 1;
+	}
+
+	int duration = ++shop->balcoes[ownIndex].clientes_em_atendimento;
+	if(duration > 10)
+		duration = 10;
+
+	if((attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug) + attempt_mutex_unlock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug)) != 0) return -1;
+
+	return duration;
+
 }
