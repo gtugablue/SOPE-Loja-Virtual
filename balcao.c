@@ -210,11 +210,13 @@ int terminate_balcao(char* shmem, shop_t *shop)
 {
 	attempt_mutex_lock(&(shop->loja_mutex), "loja", debug);
 	--shop->num_balcoes_abertos;
+	int num = shop->balcoes[ownIndex].num;
 
 	display_balcao_statistics(shop);
 
 	if(shop->num_balcoes_abertos == 0)	// this is the last balcao active
 	{
+		display_loja_statistics(shop, shmem);
 		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
 		attempt_mutex_destroy(&(shop->loja_mutex), "loja", debug);
 
@@ -234,14 +236,16 @@ int terminate_balcao(char* shmem, shop_t *shop)
 			return 1;
 		}
 
+		printf("\t==> Balcao %d terminated and closed the store %s\n\n", num, shmem);
+
 		printf("\n\t==> Shared memory cleaned\n");
 	}
 	else
 	{
 		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
-	}
 
-	printf("\t==> Balcao terminating\n\n");
+		printf("\t==> Balcao %d terminated\n\n", num);
+	}
 
 	return 0;
 }
@@ -411,4 +415,26 @@ void display_balcao_statistics(shop_t *shop)
 			"   => %d clients attended\n"
 			"   => Average attendance time of %f seconds\n\n", shop->balcoes[ownIndex].num, ownPid, (int)shop->balcoes[ownIndex].abertura, (int)shop->balcoes[ownIndex].duracao,
 			shop->balcoes[ownIndex].clientes_atendidos, shop->balcoes[ownIndex].atendimento_medio);
+}
+
+void display_loja_statistics(shop_t *shop, char* shmem)
+{
+	int num_balcoes = shop->num_balcoes;
+	double tempo_medio = 0;
+	int clientes_totais = 0;
+	int i;
+	for(i = 0; i < num_balcoes; i++)
+	{
+		tempo_medio = (tempo_medio*i + shop->balcoes[i].atendimento_medio)/(i+1);
+		clientes_totais += shop->balcoes[i].clientes_atendidos;
+	}
+
+	printf("\n\n  Loja on memory %s has closed (all counters have closed)\n"
+				"   => Opened on time %d from Epoch\n"
+				"   => Duration of %d seconds\n"
+				"   => %d counters created\n"
+				"   => %f average opening time per counter\n"
+				"   => %d total clients attended\n"
+				"   => Average of %f clients per counter\n\n", shmem, (int)shop->opening_time, (int)(time(NULL)-shop->opening_time), num_balcoes, tempo_medio, clientes_totais,
+				(double)clientes_totais/num_balcoes);
 }

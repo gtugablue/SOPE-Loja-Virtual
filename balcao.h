@@ -83,5 +83,6 @@ void initialize_shop_st(shop_t *shop);
 int update_statistics(shop_t *shop, time_t time_diff);
 int countdown_end(shop_t * shop, time_t time_diff);
 void display_balcao_statistics(shop_t *shop);
+void display_loja_statistics(shop_t *shop, char* shmem);
 
 #endif

@@ -269,7 +269,7 @@ int child_action(char *shname, int key)
 		if(attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug) != 0)
 			printf("Error: unable to unlock \"loja\" mutex.\n");
 
-		printf("Error: the specified shop has no valid balcons.\n");
+		printf("Error: the specified shop has no valid counters.\n");
 		return 1;
 	}
 
