@@ -95,7 +95,7 @@ int parent_action()
 	{
 		if(child_status != 0)
 		{
-			printf("\n\t%s - ERROR: Unexpected child process return (value %d ; pid %d))\n\n", own_name, child_status, child_pid);
+			printf("\t%s - ERROR: Unexpected child process return (value %d ; pid %d))\n", own_name, child_status, child_pid);
 			//return child_status;
 		}
 	}
@@ -175,7 +175,7 @@ int child_action(char *shname, int key)
 			return 1;
 		}
 
-		shop->balcoes[min_occup_index].clientes_em_atendimento++;
+		//shop->balcoes[min_occup_index].clientes_em_atendimento++;
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
 		//////////////////////////////////// Unlock loja mutex /////////////////////////////////////////

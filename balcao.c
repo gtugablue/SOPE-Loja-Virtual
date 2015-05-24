@@ -365,7 +365,6 @@ int read_fifo(int fifo_fd, char** non_opt_args, shop_t *shop)
 		printf("Waiting for possible clients...\n");
 
 		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN);
-		printf("Read %s\n", message);
 		if(str_size <= 0) return 0;
 		printf("\t==> Client FIFO read: %s, %d chars read.\n", message, str_size);
 
@@ -382,6 +381,8 @@ int read_fifo(int fifo_fd, char** non_opt_args, shop_t *shop)
 		cl_info->cl_fifo = thr_arg;
 		cl_info->shname = non_opt_args[0];
 		int duration = inc_balcao_attendance(shop);
+
+		printf("Sleeping %d \n", duration);
 
 		if(duration < 0)
 		{
@@ -477,7 +478,7 @@ int inc_balcao_attendance(shop_t *shop)
 		return 1;
 	}
 
-	int duration = ++shop->balcoes[ownIndex].clientes_em_atendimento;
+	int duration = shop->balcoes[ownIndex].clientes_em_atendimento++ + 1;
 	if(duration > 10)
 		duration = 10;
 
