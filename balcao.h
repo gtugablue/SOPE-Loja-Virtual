@@ -102,6 +102,8 @@ int countdown_end(shop_t * shop, time_t time_diff);
 int update_statistics(shop_t *shop, time_t time_diff);
 void display_balcao_statistics(shop_t *shop);
 void display_loja_statistics(shop_t *shop, char* shmem);
+int inc_balcao_attendance(shop_t *shop);
+int dec_balcao_attendance(shop_t *shop);
 int terminate_balcao(char* shmem, shop_t *shop);
 
 #endif

@@ -96,7 +96,7 @@ int parent_action()
 		if(child_status != 0)
 		{
 			printf("\n\t%s - ERROR: Unexpected child process return (value %d ; pid %d))\n\n", own_name, child_status, child_pid);
-			return child_status;
+			//return child_status;
 		}
 	}
 
@@ -155,6 +155,13 @@ int child_action(char *shname, int key)
 		if(debug) printf("\t==> DEBUG[%s - %d]: Choosing balcao\n", own_name, getpid());
 
 		choose_best_balcao(shop, num_balcoes, &min_occup_index);
+
+		if(min_occup_index == -1)
+		{
+			printf("\t==> ERROR: client %d found no open counter to be attended at\n", getpid());
+			attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
+			return 1;
+		}
 
 		if(debug) printf("\t==> DEBUG[%s - %d]: Chosen balcao %d\n", own_name, getpid(), shop->balcoes[min_occup_index].num);
 

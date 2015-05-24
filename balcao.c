@@ -318,6 +318,8 @@ void *attend_client(void *arg)
 	else
 		printf("\t==> ERROR: Unable to open client fifo [%s]\n", cl_fifo);
 
+	dec_balcao_attendance(((attend_thr_info*)arg)->shop);
+
 	free(((attend_thr_info*)arg)->cl_fifo);
 	free((attend_thr_info*)arg);
 	return NULL;
@@ -363,6 +365,7 @@ int read_fifo(int fifo_fd, char** non_opt_args, shop_t *shop)
 		printf("Waiting for possible clients...\n");
 
 		str_size = read(fifo_fd, message, MAX_FIFO_NAME_LEN);
+		printf("Read %s\n", message);
 		if(str_size <= 0) return 0;
 		printf("\t==> Client FIFO read: %s, %d chars read.\n", message, str_size);
 
@@ -459,7 +462,7 @@ void display_loja_statistics(shop_t *shop, char* shmem)
 				"   => Opened on time %d from Epoch\n"
 				"   => Duration of %d seconds\n"
 				"   => %d counters created\n"
-				"   => %f average opening time per counter\n"
+				"   => %f average attendance time per client\n"
 				"   => %d total clients attended\n"
 				"   => Average of %f clients per counter\n\n", shmem, (int)shop->opening_time, (int)(time(NULL)-shop->opening_time), num_balcoes, tempo_medio, clientes_totais,
 				(double)clientes_totais/num_balcoes);
@@ -483,3 +486,21 @@ int inc_balcao_attendance(shop_t *shop)
 	return duration;
 
 }
+
+int dec_balcao_attendance(shop_t *shop)
+{
+	if(attempt_mutex_lock(&(shop->loja_mutex), "loja", debug) != 0) return 1;
+	if(attempt_mutex_lock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug) != 0)
+	{
+		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
+		return -1;
+	}
+
+	shop->balcoes[ownIndex].clientes_em_atendimento--;
+
+	if((attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug) + attempt_mutex_unlock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug)) != 0) return -1;
+
+	return 0;
+}
+
+
