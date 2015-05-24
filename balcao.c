@@ -8,7 +8,6 @@ int debug;
 
 int main(int argc, char *argv[])
 {
-	// TODO verificar se tudo com malloc é libertado e substituir por alocação estática onde possivel
 	// TODO Comentar headers
 	// TODO readme
 
