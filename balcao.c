@@ -74,6 +74,8 @@ int main(int argc, char *argv[])
 	info.path = path;
 	info.shop = shop;
 	if(debug) printf("\t==> DEBUG[%s - %d]: Launching countdown thread\n", ownName, ownPid);
+
+	// Start timer thread
 	pthread_create(&counterThread, NULL, timer_countdown, &info);
 
 	if(debug) printf("\t==> DEBUG[%s - %d]: Opening FIFO %s\n", ownName, ownPid, path);
@@ -84,6 +86,9 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	///////////////////////////////////////////////////////
+	/////////////// Start attending clients ///////////////
+	///////////////////////////////////////////////////////
 
 	if(debug) printf("\t==> DEBUG[%s - %d]: Starting read cycle\n", ownName, ownPid);
 
@@ -185,6 +190,14 @@ int join_shmemory(const char *shname, shop_t **shop)
 	if(attempt_mutex_lock(&((*shop)->loja_mutex), "loja", debug) != 0) return 1;
 
 	int num_balcoes = (*shop)->num_balcoes;
+
+	if(num_balcoes >= MAX_NUM_BALCOES)
+	{
+		attempt_mutex_unlock(&((*shop)->loja_mutex), "loja", debug);
+		printf("\tERROR: the shared memory indicated has already reached the maximum number of counters (%d)\n", MAX_NUM_BALCOES);
+		return 1;
+	}
+
 	thisBalcao.num = num_balcoes + 1;
 	(*shop)->balcoes[num_balcoes] = thisBalcao;
 	(*shop)->num_balcoes++;
