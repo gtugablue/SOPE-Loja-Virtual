@@ -9,7 +9,6 @@ int debug;
 int main(int argc, char *argv[])
 {
 	// TODO Comentar headers
-	// TODO readme
 
 	///////////////////////////////////////////////////////
 	/////////////// Argument verification /////////////////
