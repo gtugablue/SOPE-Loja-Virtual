@@ -32,6 +32,9 @@
 /**Directory for the balcao FIFO to be stored at*/
 #define FIFO_DIR "/tmp/"
 
+/**Maximum amount of time to attend a client (in seconds) */
+#define MAX_ATTENDANCE_TIME	10
+
 /*!@brief Represents a balcao, storing the important variables to attend clients and create balcao and loja statistics*/
 typedef struct Balcao_t
 {
@@ -76,7 +79,6 @@ typedef struct {
 /*!@brief Auxiliar struct to pass arguments to the thread that attends clients*/
 typedef struct {
 	int duration;
-	time_t start_time;
 	char *cl_fifo;
 	const char *shname;
 	shop_t *shop;
