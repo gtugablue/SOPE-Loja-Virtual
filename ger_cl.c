@@ -169,13 +169,13 @@ int child_action(char *shname, int key)
 		///////////////////////////////// Lock the balcao for access ///////////////////////////////////
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
-		if(attempt_mutex_lock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao", debug) != 0)
+		/*if(attempt_mutex_lock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao", debug) != 0)
 		{
 			attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
 			return 1;
 		}
 
-		shop->balcoes[min_occup_index].clientes_em_atendimento++;
+		shop->balcoes[min_occup_index].clientes_em_atendimento++;*/
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
 		//////////////////////////////////// Write to balcao FIFO //////////////////////////////////////
@@ -194,7 +194,6 @@ int child_action(char *shname, int key)
 		{
 			printf("Error: unable to open \"balcao\" FIFO.\n");
 
-			attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao", debug);
 			attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
 			return 1;
 		}
@@ -203,7 +202,6 @@ int child_action(char *shname, int key)
 		{
 			printf("Error: problems writing to \"balcao\" FIFO.\n");
 
-			attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao", debug);
 			attempt_mutex_unlock(&(shop->loja_mutex), "balcao", debug);
 
 			return 1;
@@ -217,13 +215,7 @@ int child_action(char *shname, int key)
 		printf("\t==> Client %d attended by balcao %d\n", getpid(), shop->balcoes[min_occup_index].num);
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
-		////////////////////////////////// Unlock balcao mutex /////////////////////////////////////////
-		////////////////////////////////////////////////////////////////////////////////////////////////
-
-		if(attempt_mutex_unlock(&(shop->balcoes[min_occup_index].balcao_mutex), "balcao", debug) != 0) return 1;
-
-		////////////////////////////////////////////////////////////////////////////////////////////////
-		///////////////////////////////// Wait for end of attendance ///////////////////////////////////
+		///////////////////////////////// Wait until balcao is ready ///////////////////////////////////
 		////////////////////////////////////////////////////////////////////////////////////////////////
 
 		int fifo_read = open(fifo_pathname, O_RDONLY);
@@ -234,7 +226,7 @@ int child_action(char *shname, int key)
 
 		if(attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug) != 0) return 1;
 
-		if(debug) printf("\t==> DEBUG[%s - %d]: Created fifo read(%d, %s)\n", own_name, getpid(), fifo_read, path);
+		if(debug) printf("\t==> DEBUG[%s - %d]: Created fifo read (%d)\n", own_name, getpid(), fifo_read);
 
 		if(fifo_read < 0)
 		{
@@ -246,11 +238,12 @@ int child_action(char *shname, int key)
 
 		char balcao_message[MAX_FIFO_NAME_LEN];
 
-		if(debug) printf("\t==> DEBUG[%s - %d]: Read from balcao\n", own_name, getpid());
+		if(debug) printf("\t==> DEBUG[%s - %d]: Reading from private FIFO (%s)\n", own_name, getpid(), fifo_pathname);
 
 		while(1)
 		{
 			read(fifo_read, balcao_message, MAX_FIFO_NAME_LEN);
+			if(debug) printf("\t==> DEBUG[%s - %d]: Read \"%s\" from balcao\n", own_name, getpid(), ATTEND_END_MESSAGE);
 
 			if(strcmp(balcao_message, ATTEND_END_MESSAGE) == 0)
 			{
@@ -263,7 +256,6 @@ int child_action(char *shname, int key)
 		}
 
 		close(balcao_fifo_fd);
-
 		close(fifo_read);
 		if(unlink(fifo_pathname) != 0) {
 			printf("Error: unable to unlink client FIFO.\n");

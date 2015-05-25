@@ -49,42 +49,38 @@ char *filenameFromPath(const char* path)
 
 int attempt_mutex_lock(pthread_mutex_t *mutex, char *name, int debug)
 {
-	if(debug) printf("Locking mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());
-	/*while (pthread_mutex_trylock(mutex) != 0)
-	{
-
-	}*/
+	if(debug) printf("Locking %s mutex 0x%X by %d. Debug: %d\n", name, (unsigned)(unsigned long)mutex, getpid(), debug);
 	if(pthread_mutex_lock(mutex) != 0)
 	{
 		if(debug) printf("Error: unable to lock \"%s\" mutex.\n", name);
 		return 1;
 	}
-	if(debug) printf("Locked mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());
+	if(debug) printf("Locked %s mutex 0x%X by %d. Debug: %d\n", name, (unsigned)(unsigned long)mutex, getpid(), debug);
 	return 0;
 }
 
 int attempt_mutex_unlock(pthread_mutex_t *mutex, char *name, int debug)
 {
-	if(debug) printf("Unlocking mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());
+	if(debug) printf("Unlocking %s mutex 0x%X by %d. Debug: %d\n", name, (unsigned)(unsigned long)mutex, getpid(), debug);
 	if(pthread_mutex_unlock(mutex) != 0)
 	{
 		//if(debug) printf("Error: unable to unlock \"%s\" mutex.\n", name);
 		if(debug) printf("Error: unable to unlock \"%s\" mutex.\n", name);
 		return 1;
 	}
-	if(debug) printf("Unlocked mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());
+	if(debug) printf("Unlocked %s mutex 0x%X by %d. Debug: %d\n", name, (unsigned)(unsigned long)mutex, getpid(), debug);
 	return 0;
 }
 
 int attempt_mutex_destroy(pthread_mutex_t *mutex, char *name, int debug)
 {
-	if(debug) printf("Destroying mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());
+	if(debug) printf("Destroying mutex 0x%X by %d. Debug: %d\n", (unsigned)(unsigned long)mutex, getpid(), debug);
 	if(pthread_mutex_destroy(mutex) != 0)
 	{
 		//if(debug) printf("Error: unable to destroy \"%s\" mutex.\n", name);
 		if(debug) printf("Error: unable to destroy \"%s\" mutex.\n", name);
 		return 1;
 	}
-	if(debug) printf("Destroyed mutex 0x%X by %d\n", (unsigned)(unsigned long)mutex, getpid());
+	if(debug) printf("Destroyed mutex 0x%X by %d. Debug: %d\n", (unsigned)(unsigned long)mutex, getpid(), debug);
 	return 0;
 }

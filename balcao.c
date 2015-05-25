@@ -186,13 +186,13 @@ int join_shmemory(const char *shname, shop_t **shop)
 	thisBalcao.clientes_atendidos = 0;
 	thisBalcao.atendimento_medio = 0;
 
-	if(attempt_mutex_lock(&((*shop)->loja_mutex), "loja", debug) != 0) return 1;
+	if(attempt_mutex_lock(&((*shop)->loja_mutex), "loja", debug ? __LINE__ : 0) != 0) return 1;
 
 	int num_balcoes = (*shop)->num_balcoes;
 
 	if(num_balcoes >= MAX_NUM_BALCOES)
 	{
-		attempt_mutex_unlock(&((*shop)->loja_mutex), "loja", debug);
+		attempt_mutex_unlock(&((*shop)->loja_mutex), "loja", debug ? __LINE__ : 0);
 		printf("\tERROR: the shared memory indicated has already reached the maximum number of counters (%d)\n", MAX_NUM_BALCOES);
 		return 1;
 	}
@@ -207,7 +207,7 @@ int join_shmemory(const char *shname, shop_t **shop)
 	pthread_mutexattr_setpshared(&mattr, PTHREAD_PROCESS_SHARED);
 	pthread_mutex_init(&(*shop)->balcoes[num_balcoes].balcao_mutex, &mattr);
 
-	attempt_mutex_unlock(&((*shop)->loja_mutex), "loja", debug);
+	attempt_mutex_unlock(&((*shop)->loja_mutex), "loja", debug ? __LINE__ : 0);
 
 	ownIndex = num_balcoes;
 
@@ -222,7 +222,7 @@ int join_shmemory(const char *shname, shop_t **shop)
 
 int terminate_balcao(char* shmem, shop_t *shop)
 {
-	attempt_mutex_lock(&(shop->loja_mutex), "loja", debug);
+	attempt_mutex_lock(&(shop->loja_mutex), "loja", debug ? __LINE__ : 0);
 	--shop->num_balcoes_abertos;
 	int num = shop->balcoes[ownIndex].num;
 
@@ -231,8 +231,8 @@ int terminate_balcao(char* shmem, shop_t *shop)
 	if(shop->num_balcoes_abertos == 0)	// this is the last balcao active
 	{
 		display_loja_statistics(shop, shmem);
-		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
-		attempt_mutex_destroy(&(shop->loja_mutex), "loja", debug);
+		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug ? __LINE__ : 0);
+		attempt_mutex_destroy(&(shop->loja_mutex), "loja", debug ? __LINE__ : 0);
 
 		char path[strlen(FIFO_DIR) + strlen(shop->balcoes[ownIndex].fifo_name) + 1];
 		strcpy(path, FIFO_DIR);
@@ -256,7 +256,7 @@ int terminate_balcao(char* shmem, shop_t *shop)
 	}
 	else
 	{
-		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
+		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug ? __LINE__ : 0);
 
 		printf("\t==> Balcao %d terminated\n\n", num);
 	}
@@ -293,11 +293,12 @@ void *attend_client(void *arg)
 	attend_thr_info *info = ((attend_thr_info*)arg);
 	char *cl_fifo = info->cl_fifo;
 	int duration = info->duration;
-	sleep(duration);
 
 	if(debug) printf("\t==> DEBUG[%s - %d]: Opening FIFO %s\n", ownName, ownPid, cl_fifo);
 	int cl_fifo_fd = open(cl_fifo, O_WRONLY);
 	if(debug) printf("\t==> DEBUG[%s - %d]: Opened FIFO %s\n", ownName, ownPid, cl_fifo);
+
+	sleep(duration);
 
 	if(cl_fifo_fd > 0)
 	{
@@ -314,6 +315,7 @@ void *attend_client(void *arg)
 		int r;
 		if((r = write(cl_fifo_fd, ATTEND_END_MESSAGE, strlen(ATTEND_END_MESSAGE) + 1)) != strlen(ATTEND_END_MESSAGE) + 1)
 			printf("Error: different bytes written(%d)\n", r);
+		if(debug) printf("\t==> DEBUG[%s - %d]: Wrote \"%s\" to \"%s\"\n", ownName, ownPid, ATTEND_END_MESSAGE, cl_fifo);
 		close(cl_fifo_fd);
 
 		//update_statistics(info->shop, info->duration);
@@ -330,7 +332,7 @@ void *attend_client(void *arg)
 
 int update_statistics(shop_t *shop, time_t time_diff)
 {
-	if(attempt_mutex_lock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug) != 0)
+	if(attempt_mutex_lock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug ? __LINE__ : 0) != 0)
 	{
 		return 1;
 	}
@@ -348,7 +350,7 @@ int update_statistics(shop_t *shop, time_t time_diff)
 			shop->balcoes[ownIndex].duracao = new_duration;
 	}
 
-	return attempt_mutex_unlock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug);
+	return attempt_mutex_unlock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug ? __LINE__ : 0);
 }
 
 int read_fifo(int fifo_fd, char** non_opt_args, shop_t *shop)
@@ -391,6 +393,7 @@ int read_fifo(int fifo_fd, char** non_opt_args, shop_t *shop)
 		}
 
 		cl_info->shop = shop;
+
 		pthread_create(&attendThread, NULL, attend_client, cl_info);
 
 		if (write_log_entry(non_opt_args[0], BALCAO, shop->balcoes[ownIndex].num, "inicia_atend_cli", cl_info->cl_fifo)) // Doesn't need to lock the mutex in order to access the number
@@ -419,16 +422,16 @@ void initialize_shop_st(shop_t *shop)
 
 int countdown_end(shop_t * shop, time_t time_diff)
 {
-	if(attempt_mutex_lock(&(shop->loja_mutex), "loja", debug) != 0) return 1;
-	if(attempt_mutex_lock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug) != 0)
+	if(attempt_mutex_lock(&(shop->loja_mutex), "loja", debug ? __LINE__ : 0) != 0) return 1;
+	if(attempt_mutex_lock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug ? __LINE__ : 0) != 0)
 	{
-		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
+		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug ? __LINE__ : 0);
 		return 1;
 	}
 
 	shop->balcoes[ownIndex].duracao = time_diff;
 
-	return attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug) + attempt_mutex_unlock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug);
+	return attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug ? __LINE__ : 0) + attempt_mutex_unlock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug ? __LINE__ : 0);
 }
 
 void display_balcao_statistics(shop_t *shop)
@@ -484,34 +487,37 @@ void display_loja_statistics(shop_t *shop, char* shmem)
 
 int inc_balcao_attendance(shop_t *shop)
 {
-	if(attempt_mutex_lock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug) != 0)
+	if(attempt_mutex_lock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug ? __LINE__ : 0) != 0)
 	{
-		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
-		return 1;
+		printf("alooo\n");
+		return -1;
 	}
 
 	int duration = shop->balcoes[ownIndex].clientes_em_atendimento;
+	printf("duration: %d\n", duration);
 	if(duration > MAX_ATTENDANCE_TIME)
 		duration = MAX_ATTENDANCE_TIME;
 
-	if((attempt_mutex_unlock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug)) != 0) return -1;
-
+	if((attempt_mutex_unlock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug ? __LINE__ : 0)) != 0)
+	{
+		printf("alooo2\n");
+		return -1;
+	}
+	printf("duration: %d\n", duration);
 	return duration;
-
 }
 
 int dec_balcao_attendance(shop_t *shop)
 {
-	if(attempt_mutex_lock(&(shop->loja_mutex), "loja", debug) != 0) return 1;
-	if(attempt_mutex_lock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug) != 0)
+	if(attempt_mutex_lock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug ? __LINE__ : 0) != 0)
 	{
-		attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug);
+		printf("alooo2\n");
 		return -1;
 	}
 
 	shop->balcoes[ownIndex].clientes_em_atendimento--;
 
-	if((attempt_mutex_unlock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug)) != 0) return -1;
+	if((attempt_mutex_unlock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug ? __LINE__ : 0)) != 0) return -1;
 
 	return 0;
 }
