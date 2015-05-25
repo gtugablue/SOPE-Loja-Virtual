@@ -432,7 +432,7 @@ int countdown_end(shop_t * shop, time_t time_diff)
 
 	shop->balcoes[ownIndex].duracao = time_diff;
 
-	printf("\t==> Balcao %d closed due to timeout of %d seconds\n", shop->balcoes[ownIndex].num, time_diff);
+	printf("\t==> Balcao %d closed due to timeout of %d seconds\n", shop->balcoes[ownIndex].num, (int)time_diff);
 
 	return attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug ? __LINE__ : 0) + attempt_mutex_unlock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug ? __LINE__ : 0);
 }
