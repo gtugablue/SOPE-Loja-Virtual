@@ -338,7 +338,7 @@ int update_statistics(shop_t *shop, time_t time_diff)
 	}
 
 	double new_avg = (shop->balcoes[ownIndex].atendimento_medio*shop->balcoes[ownIndex].clientes_atendidos + time_diff)/(shop->balcoes[ownIndex].clientes_atendidos + 1);
-	printf("time_diff: %d, new_avg: %f, shop->balcoes[ownIndex].clientes_atendidos: %d\n", (int)time_diff, new_avg, shop->balcoes[ownIndex].clientes_atendidos);
+	if(debug) printf("\t==> DEBUG[%s - %d]: time_diff: %d, new_avg: %f, shop->balcoes[ownIndex].clientes_atendidos: %d\n", ownName, ownPid, (int)time_diff, new_avg, shop->balcoes[ownIndex].clientes_atendidos);
 	shop->balcoes[ownIndex].clientes_atendidos++;
 	shop->balcoes[ownIndex].clientes_em_atendimento--;
 	shop->balcoes[ownIndex].atendimento_medio = new_avg;
@@ -432,6 +432,8 @@ int countdown_end(shop_t * shop, time_t time_diff)
 
 	shop->balcoes[ownIndex].duracao = time_diff;
 
+	printf("\t==> Balcao %d closed due to timeout of %d seconds\n", shop->balcoes[ownIndex].num, time_diff);
+
 	return attempt_mutex_unlock(&(shop->loja_mutex), "loja", debug ? __LINE__ : 0) + attempt_mutex_unlock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug ? __LINE__ : 0);
 }
 
@@ -493,8 +495,7 @@ int inc_balcao_attendance(shop_t *shop)
 		return -1;
 	}
 
-	int duration = shop->balcoes[ownIndex].clientes_em_atendimento;
-	printf("duration: %d\n", duration);
+	int duration = shop->balcoes[ownIndex].clientes_em_atendimento++ + 1;
 	if(duration > MAX_ATTENDANCE_TIME)
 		duration = MAX_ATTENDANCE_TIME;
 
@@ -510,7 +511,6 @@ int dec_balcao_attendance(shop_t *shop)
 {
 	if(attempt_mutex_lock(&(shop->balcoes[ownIndex].balcao_mutex), "own balcao", debug ? __LINE__ : 0) != 0)
 	{
-		printf("alooo2\n");
 		return -1;
 	}
 
