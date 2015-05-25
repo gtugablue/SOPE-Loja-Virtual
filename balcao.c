@@ -1,5 +1,6 @@
 #include "balcao.h"
 #include "log.h"
+#include <time.h>
 
 int ownIndex;
 int ownPid;
@@ -437,11 +438,16 @@ void display_balcao_statistics(shop_t *shop)
 	if(shop->balcoes[ownIndex].clientes_em_atendimento > 0)
 		printf("\tWARNING: balcao %d didn't finnish attending all clients\n", shop->balcoes[ownIndex].num);
 
+	struct tm *tstruct = localtime(&shop->opening_time);
+
+	char date[20 + 1];
+	if (strftime(date, 20, "%F %T", tstruct) == 0) strcpy(date, "???");
+
 	printf("\n\n  Balcao %d (PID %d) has closed and finished the attendance of all clients\n"
-			"   => Opened on time %d from Epoch\n"
+			"   => Opened at %s (%ds since the UNIX Epoch)\n"
 			"   => Duration of %d seconds\n"
 			"   => %d clients attended\n"
-			"   => Average attendance time of %f seconds\n\n", shop->balcoes[ownIndex].num, ownPid, (int)shop->balcoes[ownIndex].abertura, (int)shop->balcoes[ownIndex].duracao,
+			"   => Average attendance time of %f seconds\n\n", ownPid, shop->balcoes[ownIndex].num, date, (int)shop->balcoes[ownIndex].abertura, (int)shop->balcoes[ownIndex].duracao,
 			shop->balcoes[ownIndex].clientes_atendidos, shop->balcoes[ownIndex].atendimento_medio);
 }
 
@@ -457,14 +463,25 @@ void display_loja_statistics(shop_t *shop, char* shmem)
 		clientes_totais += shop->balcoes[i].clientes_atendidos;
 	}
 
+	struct tm *tstruct = localtime(&shop->opening_time);
+
+	char date[20 + 1];
+	if (strftime(date, 20, "%F %T", tstruct) == 0) strcpy(date, "???");
+
 	printf("\n\n  Loja on memory %s has closed (all counters have closed)\n"
-				"   => Opened on time %d from Epoch\n"
-				"   => Duration of %d seconds\n"
-				"   => %d counters created\n"
-				"   => %f average attendance time per client\n"
-				"   => %d total clients attended\n"
-				"   => Average of %f clients per counter\n\n", shmem, (int)shop->opening_time, (int)(time(NULL)-shop->opening_time), num_balcoes, tempo_medio, clientes_totais,
-				(double)clientes_totais/num_balcoes);
+			"   => Opened at %s (%d since the UNIX Epoch)\n"
+			"   => Duration of %d seconds\n"
+			"   => %d counters created\n"
+			"   => %f average attendance time per client\n"
+			"   => %d total clients attended\n"
+			"   => Average of %f clients per counter\n\n",
+			shmem,
+			date, (int)shop->opening_time,
+			(int)(time(NULL)-shop->opening_time),
+			num_balcoes,
+			tempo_medio,
+			clientes_totais,
+			(double)clientes_totais/num_balcoes);
 }
 
 int inc_balcao_attendance(shop_t *shop)

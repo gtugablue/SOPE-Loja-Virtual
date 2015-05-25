@@ -2,7 +2,9 @@ FLAGS = -Wall
 MKDIR_P = mkdir -p
 BIN_DIR = bin
 
-make: out_dir balcao ger_cl
+make: all
+
+all: out_dir balcao ger_cl
 
 out_dir:
 	${MKDIR_P} ${BIN_DIR}
