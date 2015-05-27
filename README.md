@@ -29,11 +29,17 @@ Depois de criada e inicializada a memória partilhada e a FIFO do balcão, é cr
 
 Sempre que um cliente é atendido o balcão atualiza as suas informações na memória partilhada bloqueando apenas o seu mutex, o que permite que vários balcões acedam à memória partilhada ao mesmo tempo.
 No entanto, para evitar problemas relacionados com *racing conditions*, ao terminar o balcão este bloqueia o mutex global. Isto evita que um cliente escolha um balcão no instante anterior a ele fechar.
+Para fazer o atendimento dos clientes, sempre que um novo é recebido é criada uma thread de atendimento cujas ações são:
+
+1. Abre a FIFO do cliente para escrita de forma a "comunicar" ao cliente que o seu atendimento vai ser iniciado.
+2. Executa um sleep correspondente ao tempo de atendimento calculado (soma de 1 com o número de clientes em atendimento no instante anterior a se iniciar o atendimento do cliente, limitado a um máximo de 10 segundos).
+3. Escreve a string "fim_atendimento" na FIFO do cliente, fechando-a de seguida.
+4. Atualiza as estatísticas do balcão e termina libertando a memória alocada dinâmicamente, referente apenas a essa thread.
 
 Cliente
 -------
 
-Um cliente, ao entrar na loja, bloqueia o mutex global e procura o balcão com menor número de clientes em atendimento. De seguida, bloqueia o mutex desse balcão e desbloqueia o global. É neste momento que o cliente envia o nome da FIFO privada para a FIFO do balcão e entra numa espera bloqueante até receber a string "fim_atendimento" pela FIFO privada.
+Um cliente, ao entrar na loja, bloqueia o mutex global e procura o balcão com menor número de clientes em atendimento, bloqueando o seu mutex de seguida. É neste momento que o cliente abre a FIFO do balcão e envia o nome da sua FIFO privada para a FIFO do balcão. Depois de fazer isto, abre a sua própria FIFO, sendo esta uma abertura bloqueante que só é terminada quando o balcão abre a FIFO do cliente para escrita. Quando esta abertura é concluída, o cliente sabe que o balcão já iniciou seu atendimento, libertando nesse momento o mutex global. Isto impossibilita um cálculo errado dos tempos de atendimento de cada cliente, uma vez que força a receção sequencial e não simultânea dos clientes. De seguida, o cliente entra numa leitura bloqueante da sua própria FIFO até receber a string "fim_atendimento". Por fim, limpa a memória que ocupou dinâmicamente e destrói a FIFO antes de terminar.
 
 Divisão por ficheiros
 =====================

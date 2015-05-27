@@ -309,7 +309,6 @@ void *attend_client(void *arg)
 
 		if(debug) printf("\t==> DEBUG[%s - %d]: Writing \"%s\" to \"%s\"\n", ownName, ownPid, ATTEND_END_MESSAGE, cl_fifo);
 
-		//dec_balcao_attendance(info->shop);
 		update_statistics(info->shop, info->duration);
 
 		int r;
@@ -317,13 +316,9 @@ void *attend_client(void *arg)
 			printf("Error: different bytes written(%d)\n", r);
 		if(debug) printf("\t==> DEBUG[%s - %d]: Wrote \"%s\" to \"%s\"\n", ownName, ownPid, ATTEND_END_MESSAGE, cl_fifo);
 		close(cl_fifo_fd);
-
-		//update_statistics(info->shop, info->duration);
 	}
 	else
 		printf("\t==> ERROR: Unable to open client fifo [%s]\n", cl_fifo);
-
-	//dec_balcao_attendance(info->shop);
 
 	free(info->cl_fifo);
 	free(info);
